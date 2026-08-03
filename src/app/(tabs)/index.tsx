@@ -9,11 +9,14 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useTranslation } from "react-i18next";
 
 import { SectionTitle } from "@/components/SectionTitle";
 import { COLORS, RADII, SPACING } from "@/constants/theme";
 
 export default function HomeScreen() {
+  const { t } = useTranslation();
+
   return (
     <SafeAreaView edges={["top"]} style={styles.safeArea}>
       <ScrollView
@@ -40,17 +43,19 @@ export default function HomeScreen() {
         >
           <View style={styles.heroTop}>
             <View>
-              <Text style={styles.heroEyebrow}>NIVEL 1</Text>
-              <Text style={styles.heroTitle}>Wanderer</Text>
+              <Text style={styles.heroEyebrow}>
+                {t("home.level")}
+              </Text>
+              <Text style={styles.heroTitle}>
+                {t("home.rank")}
+              </Text>
             </View>
             <View style={styles.levelMedallion}>
               <Text style={styles.levelText}>1</Text>
             </View>
           </View>
 
-          <Text style={styles.heroCopy}>
-            Prima ta călătorie începe chiar de la ușa casei.
-          </Text>
+          <Text style={styles.heroCopy}>{t("home.intro")}</Text>
 
           <View style={styles.progressTrack}>
             <View style={styles.progressFill} />
@@ -61,47 +66,61 @@ export default function HomeScreen() {
           </View>
 
           <View style={styles.heroStats}>
-            <HeroStat label="parcurși" value="0,0 km" />
-            <HeroStat label="zone noi" value="0" />
-            <HeroStat label="landmark-uri" value="0" />
+            <HeroStat label={t("home.distance")} value="0.0 km" />
+            <HeroStat label={t("home.areas")} value="0" />
+            <HeroStat label={t("home.landmarks")} value="0" />
           </View>
         </LinearGradient>
 
         <View style={styles.quickGrid}>
           <QuickAction
             icon="map-outline"
-            label="Pornește explorarea"
+            label={t("home.startExploring")}
             onPress={() => router.push("/explore")}
           />
           <QuickAction
             icon="bag-handle-outline"
-            label="Deschide shop-ul"
+            label={t("home.openShop")}
             onPress={() => router.push("/shop")}
           />
         </View>
 
-        <SectionTitle action="0/3 completate" title="Misiunile de azi" />
+        <SectionTitle
+          action={t("home.completed", { done: 0, total: 3 })}
+          title={t("home.todayMissions")}
+        />
 
         <View style={styles.questCard}>
           <View style={styles.questIcon}>
-            <Ionicons color={COLORS.vermilion} name="footsteps" size={24} />
+            <Ionicons
+              color={COLORS.vermilion}
+              name="footsteps"
+              size={24}
+            />
           </View>
           <View style={styles.questBody}>
-            <Text style={styles.questTitle}>Primii pași</Text>
+            <Text style={styles.questTitle}>
+              {t("home.firstSteps")}
+            </Text>
             <Text style={styles.questDescription}>
-              Parcurge 1.500 de pași în lumea reală.
+              {t("home.firstStepsDescription")}
             </Text>
             <View style={styles.questProgressTrack}>
               <View style={styles.questProgressFill} />
             </View>
-            <Text style={styles.questMeta}>0 / 1.500 pași</Text>
+            <Text style={styles.questMeta}>
+              {t("home.stepsProgress")}
+            </Text>
           </View>
           <View style={styles.rewardPill}>
             <Text style={styles.rewardText}>+50 XP</Text>
           </View>
         </View>
 
-        <SectionTitle action="Vezi harta" title="Descoperire în apropiere" />
+        <SectionTitle
+          action={t("home.viewMap")}
+          title={t("home.nearbyDiscovery")}
+        />
 
         <Pressable
           onPress={() => router.push("/explore")}
@@ -114,17 +133,22 @@ export default function HomeScreen() {
             <View style={styles.mapRingLarge} />
             <View style={styles.mapRingSmall} />
             <View style={styles.pin}>
-              <Ionicons color={COLORS.white} name="location" size={20} />
+              <Ionicons
+                color={COLORS.white}
+                name="location"
+                size={20}
+              />
             </View>
           </View>
           <View style={styles.discoveryBody}>
-            <Text style={styles.discoveryEyebrow}>FOG OF WAR ACTIV</Text>
+            <Text style={styles.discoveryEyebrow}>
+              {t("home.fogActive")}
+            </Text>
             <Text style={styles.discoveryTitle}>
-              Setează punctul Home
+              {t("home.discoveryTitle")}
             </Text>
             <Text style={styles.discoveryCopy}>
-              Vom construi prima zonă explorabilă în jurul tău, fără să
-              afișăm public adresa exactă.
+              {t("home.discoveryCopy")}
             </Text>
           </View>
         </Pressable>
@@ -154,22 +178,26 @@ function QuickAction({
   return (
     <Pressable
       onPress={onPress}
-      style={({ pressed }) => [styles.quickAction, pressed && styles.pressed]}
+      style={({ pressed }) => [
+        styles.quickAction,
+        pressed && styles.pressed,
+      ]}
     >
       <View style={styles.quickIcon}>
         <Ionicons color={COLORS.ink} name={icon} size={24} />
       </View>
       <Text style={styles.quickLabel}>{label}</Text>
-      <Ionicons color={COLORS.vermilion} name="arrow-forward" size={19} />
+      <Ionicons
+        color={COLORS.vermilion}
+        name="arrow-forward"
+        size={19}
+      />
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    backgroundColor: COLORS.paper,
-    flex: 1,
-  },
+  safeArea: { backgroundColor: COLORS.paper, flex: 1 },
   content: {
     gap: SPACING.large,
     paddingBottom: 34,
@@ -187,11 +215,7 @@ const styles = StyleSheet.create({
     fontWeight: "900",
     letterSpacing: 3,
   },
-  tagline: {
-    color: COLORS.muted,
-    fontSize: 12,
-    marginTop: 3,
-  },
+  tagline: { color: COLORS.muted, fontSize: 12, marginTop: 3 },
   coinPill: {
     alignItems: "center",
     backgroundColor: COLORS.white,
@@ -203,11 +227,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 13,
     paddingVertical: 9,
   },
-  coinText: {
-    color: COLORS.ink,
-    fontSize: 15,
-    fontWeight: "900",
-  },
+  coinText: { color: COLORS.ink, fontSize: 15, fontWeight: "900" },
   hero: {
     borderRadius: RADII.large,
     overflow: "hidden",
@@ -240,17 +260,13 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     width: 56,
   },
-  levelText: {
-    color: COLORS.white,
-    fontSize: 23,
-    fontWeight: "900",
-  },
+  levelText: { color: COLORS.white, fontSize: 23, fontWeight: "900" },
   heroCopy: {
     color: "rgba(255,255,255,0.76)",
     fontSize: 14,
     lineHeight: 20,
     marginTop: 14,
-    maxWidth: 270,
+    maxWidth: 280,
   },
   progressTrack: {
     backgroundColor: "rgba(255,255,255,0.16)",
@@ -283,10 +299,7 @@ const styles = StyleSheet.create({
     marginTop: 20,
     paddingTop: 18,
   },
-  heroStat: {
-    alignItems: "center",
-    flex: 1,
-  },
+  heroStat: { alignItems: "center", flex: 1 },
   heroStatValue: {
     color: COLORS.white,
     fontSize: 17,
@@ -296,10 +309,9 @@ const styles = StyleSheet.create({
     color: "rgba(255,255,255,0.58)",
     fontSize: 10,
     marginTop: 4,
+    textAlign: "center",
   },
-  quickGrid: {
-    gap: 12,
-  },
+  quickGrid: { gap: 12 },
   quickAction: {
     alignItems: "center",
     backgroundColor: COLORS.white,
@@ -324,10 +336,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "800",
   },
-  pressed: {
-    opacity: 0.72,
-    transform: [{ scale: 0.99 }],
-  },
+  pressed: { opacity: 0.72, transform: [{ scale: 0.99 }] },
   questCard: {
     alignItems: "flex-start",
     backgroundColor: COLORS.white,
@@ -346,14 +355,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     width: 48,
   },
-  questBody: {
-    flex: 1,
-  },
-  questTitle: {
-    color: COLORS.ink,
-    fontSize: 15,
-    fontWeight: "900",
-  },
+  questBody: { flex: 1 },
+  questTitle: { color: COLORS.ink, fontSize: 15, fontWeight: "900" },
   questDescription: {
     color: COLORS.muted,
     fontSize: 12,
@@ -384,11 +387,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 9,
     paddingVertical: 6,
   },
-  rewardText: {
-    color: COLORS.inkSoft,
-    fontSize: 10,
-    fontWeight: "900",
-  },
+  rewardText: { color: COLORS.inkSoft, fontSize: 10, fontWeight: "900" },
   discoveryCard: {
     backgroundColor: COLORS.white,
     borderColor: COLORS.line,
@@ -429,9 +428,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     width: 48,
   },
-  discoveryBody: {
-    padding: 17,
-  },
+  discoveryBody: { padding: 17 },
   discoveryEyebrow: {
     color: COLORS.matcha,
     fontSize: 11,

@@ -1,15 +1,22 @@
 import { Link } from "expo-router";
 import { StyleSheet, Text, View } from "react-native";
+import { useTranslation } from "react-i18next";
 
 import { COLORS } from "@/constants/theme";
 
 export default function NotFoundScreen() {
+  const { t } = useTranslation();
+
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Drum nedescoperit</Text>
-      <Text style={styles.copy}>Această pagină nu există încă în Arukiyo.</Text>
+      <Text style={styles.title}>
+        {t("notFound.title")}
+      </Text>
+      <Text style={styles.copy}>
+        {t("notFound.copy")}
+      </Text>
       <Link href="/" style={styles.link}>
-        Înapoi acasă
+        {t("notFound.action")}
       </Link>
     </View>
   );

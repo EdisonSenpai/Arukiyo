@@ -33,7 +33,7 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Arukiyo folosește locația pentru a descoperi zone, trasee și landmark-uri din apropiere.",
+          "locationWhenInUsePermission": "Arukiyo uses your location to discover nearby areas, routes, and landmarks.",
           "isAndroidBackgroundLocationEnabled": false,
           "isAndroidForegroundServiceEnabled": false
         }
@@ -45,7 +45,24 @@
         }
       ],
       "expo-sqlite",
-      "@maplibre/maplibre-react-native"
+      "@maplibre/maplibre-react-native",
+      [
+        "expo-localization",
+        {
+          "supportedLocales": {
+            "android": [
+              "en",
+              "ro",
+              "ja"
+            ],
+            "ios": [
+              "en",
+              "ro",
+              "ja"
+            ]
+          }
+        }
+      ]
     ],
     "scheme": "arukiyo",
     "slug": "arukiyo",

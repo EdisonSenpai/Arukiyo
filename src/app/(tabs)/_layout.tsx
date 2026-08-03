@@ -2,6 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
 import type { ComponentProps } from "react";
 import { Platform, StyleSheet } from "react-native";
+import { useTranslation } from "react-i18next";
 
 import { COLORS } from "@/constants/theme";
 
@@ -22,6 +23,8 @@ const ICONS: Record<
 };
 
 export default function TabsLayout() {
+  const { t } = useTranslation();
+
   return (
     <Tabs
       screenOptions={({ route }) => {
@@ -44,11 +47,11 @@ export default function TabsLayout() {
         };
       }}
     >
-      <Tabs.Screen name="index" options={{ title: "Acasă" }} />
-      <Tabs.Screen name="explore" options={{ title: "Explorează" }} />
-      <Tabs.Screen name="quests" options={{ title: "Misiuni" }} />
-      <Tabs.Screen name="journal" options={{ title: "Jurnal" }} />
-      <Tabs.Screen name="profile" options={{ title: "Profil" }} />
+      <Tabs.Screen name="index" options={{ title: t("tabs.home") }} />
+      <Tabs.Screen name="explore" options={{ title: t("tabs.explore") }} />
+      <Tabs.Screen name="quests" options={{ title: t("tabs.quests") }} />
+      <Tabs.Screen name="journal" options={{ title: t("tabs.journal") }} />
+      <Tabs.Screen name="profile" options={{ title: t("tabs.profile") }} />
     </Tabs>
   );
 }

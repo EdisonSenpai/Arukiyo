@@ -1,43 +1,57 @@
-# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
-
-# dependencies
+# Dependencies
 node_modules/
 
-# Expo
+# Expo and Metro
 .expo/
 dist/
 web-build/
+.metro-health-check*
 expo-env.d.ts
 
-# Native
+# Generated native projects
+/android/
+/ios/
+
+# Native output and signing material
 .kotlin/
-*.orig.*
+*.apk
+*.aab
 *.jks
+*.keystore
 *.p8
 *.p12
 *.key
 *.mobileprovision
+*.pem
+*.orig.*
 
-# Metro
-.metro-health-check*
+# Environment and secrets
+.env
+.env.*
+!.env.example
 
-# debug
+# Logs and caches
+*.log
 npm-debug.*
 yarn-debug.*
 yarn-error.*
-
-# macOS
-.DS_Store
-*.pem
-
-# local env files
-.env*.local
-
-# typescript
+.eslintcache
+.cache/
+coverage/
 *.tsbuildinfo
 
-example
+# Editor and local AI tooling
+.vscode/
+.idea/
+.claude/
+AGENTS.md
+CLAUDE.md
 
-# generated native folders
-/ios
-/android
+# Operating system
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Temporary stage delivery files
+/Arukiyo-Stage*.zip
+/STAGE*-INSTALL.txt

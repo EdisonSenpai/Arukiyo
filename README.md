@@ -8,7 +8,7 @@
 
 A Japanese-inspired mobile exploration game that turns real-world movement into progress, discovery, collections, and adventure.
 
-[![Development Stage](https://img.shields.io/badge/stage-2B%20completed-D85B4B?style=for-the-badge)](#development-progress)
+[![Development Stage](https://img.shields.io/badge/stage-2C%20completed-D85B4B?style=for-the-badge)](#development-progress)
 [![Platform](https://img.shields.io/badge/platform-Android-3DDC84?style=for-the-badge&logo=android&logoColor=white)](#technology)
 [![Expo](https://img.shields.io/badge/Expo-SDK%2057-000020?style=for-the-badge&logo=expo&logoColor=white)](#technology)
 [![React Native](https://img.shields.io/badge/React%20Native-0.86-61DAFB?style=for-the-badge&logo=react&logoColor=black)](#technology)
@@ -43,6 +43,9 @@ The current Android development build already includes:
 - live foreground exploration sessions;
 - current-location and Home map markers;
 - local completion statistics and exploration reset tools;
+- English-first localization with Romanian, Japanese, and device-language modes;
+- dedicated Settings and Language screens;
+- a visible Home icon and clearer roads beneath the fog-of-war layer;
 - wireless Android development and physical-device testing.
 
 ## Core product vision
@@ -72,8 +75,8 @@ Arukiyo is planned as a progressive real-world exploration RPG with:
 | Stage 1A | ✅ Complete | Arukiyo visual identity, tabs, Home, Quests, Journal, Profile, and Shop prototypes |
 | Stage 2A | ✅ Complete | Foreground GPS, encrypted Home location, permission handling, location accuracy |
 | Stage 2B | ✅ Complete | MapLibre map, H3 cells, SQLite persistence, live exploration, fog of war |
-| Stage 2C | ⏭ Next | English-first localization, Romanian and Japanese, map polish, real Home icon |
-| Stage 3 | Planned | Route distance, session history, XP, rewards, and discovery animations |
+| Stage 2C | ✅ Complete | English-first localization, Romanian and Japanese, map polish, real Home icon |
+| Stage 3 | ⏭ Next | Route distance, session history, XP, rewards, and discovery animations |
 | Stage 4 | Planned | Landmark discovery, collections, badges, historical information |
 | Stage 5 | Planned | Accounts, synchronization, FastAPI backend, PostgreSQL and PostGIS |
 
@@ -93,18 +96,16 @@ Arukiyo currently converts GPS coordinates into H3 hexagonal cells. Entering a c
 
 Exploration data is persisted locally in SQLite. The exact Home coordinate is stored separately through Expo Secure Store and is not uploaded to a server in the current implementation.
 
-## Planned languages
+## Languages
 
-The application will use **English as its default language**.
+Arukiyo currently provides:
 
-Initial language support:
+- **English** as the default language;
+- **Romanian**;
+- **Japanese**;
+- a **Use device language** mode that follows Android when the language is supported.
 
-- English;
-- Romanian — Română;
-- Japanese — 日本語;
-- device-language selection.
-
-Localization infrastructure is scheduled for Stage 2C, before the application accumulates large amounts of interface text.
+The selected language is stored locally and restored when the application is reopened.
 
 ## Technology
 
@@ -200,20 +201,24 @@ npx expo start --dev-client --lan
 
 Routine TypeScript and interface changes do not require rebuilding the APK. A new native build is required after adding or changing native modules.
 
-## Stage 2B test flow
+## Current validation flow
 
-1. Open **Explore**.
-2. Grant precise foreground location permission.
-3. Press **Start exploring**.
-4. Confirm that the green GPS marker and gold current hexagon appear.
-5. Configure the private Home location.
-6. Walk into another H3 cell with the application open.
-7. Confirm that visited cells remain discovered after restarting the app.
-8. Use **Reset fog** only when testing local progression from zero.
+1. Confirm that the app starts in English by default.
+2. Open **Profile -> Settings -> Language**.
+3. Test English, Romanian, Japanese, and device-language mode.
+4. Close and reopen the app and confirm that the language persists.
+5. Open **Explore**.
+6. Grant precise foreground location permission.
+7. Press **Start exploring**.
+8. Confirm that the GPS marker, current hexagon, and Home marker appear.
+9. Configure the private Home location if it is not configured.
+10. Walk into another H3 cell with the application open.
+11. Confirm that visited cells remain discovered after restarting the app.
+12. Use **Reset fog** only when testing local progression from zero.
 
 ## Screenshots
 
-Clean in-app screenshots will be added after the Stage 2C localization and map-polish pass, so the repository preview represents the final English-first interface rather than temporary development labels.
+Clean in-app screenshots will be added after the Stage 3 route, distance, and reward pass, when the primary exploration interface is stable.
 
 Planned gallery:
 

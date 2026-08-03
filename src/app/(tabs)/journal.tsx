@@ -1,11 +1,14 @@
 import { Ionicons } from "@expo/vector-icons";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useTranslation } from "react-i18next";
 
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { COLORS, RADII, SPACING } from "@/constants/theme";
 
 export default function JournalScreen() {
+  const { t } = useTranslation();
+
   return (
     <SafeAreaView edges={["top"]} style={styles.safeArea}>
       <ScrollView
@@ -13,18 +16,18 @@ export default function JournalScreen() {
         showsVerticalScrollIndicator={false}
       >
         <ScreenHeader
-          eyebrow="Tabi no techō"
-          subtitle="Jurnalul tău de călătorie și colecția de ștampile."
-          title="Jurnal"
+          eyebrow={t("journal.eyebrow")}
+          subtitle={t("journal.subtitle")}
+          title={t("journal.title")}
         />
 
         <View style={styles.book}>
           <View style={styles.binding} />
-          <Text style={styles.bookEyebrow}>PRIMA PAGINĂ</Text>
-          <Text style={styles.bookTitle}>București</Text>
-          <Text style={styles.bookCopy}>
-            Descoperă primul landmark pentru a începe albumul orașului.
+          <Text style={styles.bookEyebrow}>
+            {t("journal.firstPage")}
           </Text>
+          <Text style={styles.bookTitle}>{t("journal.city")}</Text>
+          <Text style={styles.bookCopy}>{t("journal.cityCopy")}</Text>
 
           <View style={styles.stamps}>
             {[0, 1, 2, 3].map((stamp) => (
@@ -34,7 +37,9 @@ export default function JournalScreen() {
                   name="location-outline"
                   size={26}
                 />
-                <Text style={styles.stampText}>Nedescoperit</Text>
+                <Text style={styles.stampText}>
+                  {t("journal.undiscovered")}
+                </Text>
               </View>
             ))}
           </View>
@@ -42,14 +47,18 @@ export default function JournalScreen() {
 
         <View style={styles.collectionCard}>
           <View style={styles.collectionIcon}>
-            <Ionicons color={COLORS.gold} name="trophy-outline" size={25} />
+            <Ionicons
+              color={COLORS.gold}
+              name="trophy-outline"
+              size={25}
+            />
           </View>
           <View style={styles.collectionBody}>
             <Text style={styles.collectionTitle}>
-              Monumentele Bucureștiului
+              {t("journal.collection")}
             </Text>
             <Text style={styles.collectionDescription}>
-              0 din 12 landmark-uri descoperite
+              {t("journal.collectionProgress")}
             </Text>
             <View style={styles.track}>
               <View style={styles.fill} />
@@ -63,10 +72,7 @@ export default function JournalScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    backgroundColor: COLORS.paper,
-    flex: 1,
-  },
+  safeArea: { backgroundColor: COLORS.paper, flex: 1 },
   content: {
     gap: SPACING.large,
     paddingBottom: 36,
@@ -150,19 +156,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     width: 48,
   },
-  collectionBody: {
-    flex: 1,
-  },
-  collectionTitle: {
-    color: COLORS.ink,
-    fontSize: 14,
-    fontWeight: "900",
-  },
-  collectionDescription: {
-    color: COLORS.muted,
-    fontSize: 11,
-    marginTop: 3,
-  },
+  collectionBody: { flex: 1 },
+  collectionTitle: { color: COLORS.ink, fontSize: 14, fontWeight: "900" },
+  collectionDescription: { color: COLORS.muted, fontSize: 11, marginTop: 3 },
   track: {
     backgroundColor: COLORS.mist,
     borderRadius: RADII.pill,
@@ -170,14 +166,6 @@ const styles = StyleSheet.create({
     marginTop: 9,
     overflow: "hidden",
   },
-  fill: {
-    backgroundColor: COLORS.gold,
-    height: "100%",
-    width: "2%",
-  },
-  percent: {
-    color: COLORS.gold,
-    fontSize: 16,
-    fontWeight: "900",
-  },
+  fill: { backgroundColor: COLORS.gold, height: "100%", width: "2%" },
+  percent: { color: COLORS.gold, fontSize: 16, fontWeight: "900" },
 });

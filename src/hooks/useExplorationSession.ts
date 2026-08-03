@@ -7,10 +7,9 @@ import {
   useRef,
   useState,
 } from "react";
+import { useTranslation } from "react-i18next";
 
-import {
-  H3_RESOLUTION,
-} from "@/constants/exploration";
+import { H3_RESOLUTION } from "@/constants/exploration";
 import {
   clearExploredCells,
   loadExploredCellIds,
@@ -54,6 +53,7 @@ export type ExplorationSessionState = {
 
 export function useExplorationSession(): ExplorationSessionState {
   const database = useSQLiteContext();
+  const { t } = useTranslation();
   const [permission, requestPermission] =
     Location.useForegroundPermissions();
 
@@ -89,9 +89,7 @@ export function useExplorationSession(): ExplorationSessionState {
         }
       } catch {
         if (mounted) {
-          setError(
-            "Datele locale de explorare nu au putut fi încărcate.",
-          );
+          setError(t("explore.errors.loadData"));
         }
       } finally {
         if (mounted) {
@@ -105,7 +103,7 @@ export function useExplorationSession(): ExplorationSessionState {
     return () => {
       mounted = false;
     };
-  }, [database]);
+  }, [database, t]);
 
   const currentCell = useMemo(() => {
     if (!currentLocation) {
@@ -196,12 +194,10 @@ export function useExplorationSession(): ExplorationSessionState {
           setLastDiscoveredCell(cellId);
         }
       } catch {
-        setError(
-          "Celula curentă nu a putut fi salvată în jurnalul local.",
-        );
+        setError(t("explore.errors.saveCell"));
       }
     },
-    [database],
+    [database, t],
   );
 
   const ensurePermission = useCallback(async () => {
@@ -209,9 +205,7 @@ export function useExplorationSession(): ExplorationSessionState {
       await Location.hasServicesEnabledAsync();
 
     if (!servicesEnabled) {
-      throw new Error(
-        "GPS-ul este oprit. Activează serviciile de localizare.",
-      );
+      throw new Error(t("explore.errors.gpsOff"));
     }
 
     let activePermission = permission;
@@ -223,13 +217,13 @@ export function useExplorationSession(): ExplorationSessionState {
     if (!activePermission.granted) {
       throw new Error(
         activePermission.canAskAgain
-          ? "Arukiyo are nevoie de permisiunea de locație."
-          : "Permisiunea este blocată. Activeaz-o din setările aplicației.",
+          ? t("explore.errors.permissionNeeded")
+          : t("explore.errors.permissionBlocked"),
       );
     }
 
     return activePermission;
-  }, [permission, requestPermission]);
+  }, [permission, requestPermission, t]);
 
   const refreshLocation = useCallback(async () => {
     setIsBusy(true);
@@ -248,12 +242,12 @@ export function useExplorationSession(): ExplorationSessionState {
       setError(
         reason instanceof Error
           ? reason.message
-          : "Poziția nu a putut fi citită.",
+          : t("explore.errors.readLocation"),
       );
     } finally {
       setIsBusy(false);
     }
-  }, [ensurePermission, processLocation]);
+  }, [ensurePermission, processLocation, t]);
 
   const stopSession = useCallback(() => {
     subscriptionRef.current?.remove();
@@ -298,7 +292,7 @@ export function useExplorationSession(): ExplorationSessionState {
       setError(
         reason instanceof Error
           ? reason.message
-          : "Sesiunea de explorare nu a putut porni.",
+          : t("explore.errors.startSession"),
       );
     } finally {
       setIsBusy(false);
@@ -308,6 +302,7 @@ export function useExplorationSession(): ExplorationSessionState {
     isSessionActive,
     processLocation,
     stopSession,
+    t,
   ]);
 
   useEffect(
@@ -319,9 +314,7 @@ export function useExplorationSession(): ExplorationSessionState {
 
   const saveCurrentAsHome = useCallback(async () => {
     if (!currentLocation) {
-      setError(
-        "Citește poziția înainte să setezi zona Home.",
-      );
+      setError(t("explore.errors.setHomeFirst"));
       return;
     }
 
@@ -339,11 +332,11 @@ export function useExplorationSession(): ExplorationSessionState {
       await saveHomeLocation(value);
       setHomeLocation(value);
     } catch {
-      setError("Zona Home nu a putut fi salvată securizat.");
+      setError(t("explore.errors.saveHome"));
     } finally {
       setIsBusy(false);
     }
-  }, [currentLocation]);
+  }, [currentLocation, t]);
 
   const removeHome = useCallback(async () => {
     setIsBusy(true);
@@ -353,11 +346,11 @@ export function useExplorationSession(): ExplorationSessionState {
       await deleteHomeLocation();
       setHomeLocation(null);
     } catch {
-      setError("Zona Home nu a putut fi ștearsă.");
+      setError(t("explore.errors.deleteHome"));
     } finally {
       setIsBusy(false);
     }
-  }, []);
+  }, [t]);
 
   const clearExploration = useCallback(async () => {
     setIsBusy(true);
@@ -368,13 +361,11 @@ export function useExplorationSession(): ExplorationSessionState {
       setExploredCellIds(new Set());
       setLastDiscoveredCell(null);
     } catch {
-      setError(
-        "Istoricul local de explorare nu a putut fi resetat.",
-      );
+      setError(t("explore.errors.resetFog"));
     } finally {
       setIsBusy(false);
     }
-  }, [database]);
+  }, [database, t]);
 
   return {
     cellFeatures,

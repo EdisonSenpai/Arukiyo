@@ -8,34 +8,37 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useTranslation } from "react-i18next";
 
 import { COLORS, RADII, SPACING } from "@/constants/theme";
 
-const ITEMS = [
-  {
-    title: "Sakura Trail",
-    category: "Efect de traseu",
-    price: 250,
-    icon: "flower" as const,
-    accent: COLORS.sakuraSoft,
-  },
-  {
-    title: "Kitsune Frame",
-    category: "Ramă de profil",
-    price: 400,
-    icon: "sparkles" as const,
-    accent: COLORS.paperStrong,
-  },
-  {
-    title: "Matcha Map",
-    category: "Temă de hartă",
-    price: 320,
-    icon: "map" as const,
-    accent: COLORS.matchaSoft,
-  },
-];
-
 export default function ShopScreen() {
+  const { t } = useTranslation();
+
+  const items = [
+    {
+      title: t("shop.sakuraTrail"),
+      category: t("shop.trailEffect"),
+      price: 250,
+      icon: "flower" as const,
+      accent: COLORS.sakuraSoft,
+    },
+    {
+      title: t("shop.kitsuneFrame"),
+      category: t("shop.profileFrame"),
+      price: 400,
+      icon: "sparkles" as const,
+      accent: COLORS.paperStrong,
+    },
+    {
+      title: t("shop.matchaMap"),
+      category: t("shop.mapTheme"),
+      price: 320,
+      icon: "map" as const,
+      accent: COLORS.matchaSoft,
+    },
+  ];
+
   return (
     <SafeAreaView edges={["top", "bottom"]} style={styles.safeArea}>
       <ScrollView
@@ -43,12 +46,16 @@ export default function ShopScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
-          <Pressable onPress={() => router.back()} style={styles.backButton}>
+          <Pressable
+            accessibilityLabel={t("common.back")}
+            onPress={() => router.back()}
+            style={styles.backButton}
+          >
             <Ionicons color={COLORS.ink} name="arrow-back" size={23} />
           </Pressable>
           <View style={styles.headerCopy}>
-            <Text style={styles.eyebrow}>PERSONALIZARE</Text>
-            <Text style={styles.title}>Arukiyo Shop</Text>
+            <Text style={styles.eyebrow}>{t("shop.eyebrow")}</Text>
+            <Text style={styles.title}>{t("shop.title")}</Text>
           </View>
           <View style={styles.wallet}>
             <Ionicons color={COLORS.gold} name="leaf" size={17} />
@@ -57,12 +64,15 @@ export default function ShopScreen() {
         </View>
 
         <View style={styles.banner}>
-          <View>
-            <Text style={styles.bannerEyebrow}>COLECȚIA DE START</Text>
-            <Text style={styles.bannerTitle}>Sakura Journey</Text>
+          <View style={styles.bannerCopyWrap}>
+            <Text style={styles.bannerEyebrow}>
+              {t("shop.starterCollection")}
+            </Text>
+            <Text style={styles.bannerTitle}>
+              {t("shop.collectionTitle")}
+            </Text>
             <Text style={styles.bannerCopy}>
-              Primele cosmetice vor fi cumpărate cu monede câștigate prin
-              explorare.
+              {t("shop.collectionCopy")}
             </Text>
           </View>
           <Ionicons color={COLORS.sakura} name="flower" size={62} />
@@ -70,17 +80,28 @@ export default function ShopScreen() {
 
         <View style={styles.filters}>
           <View style={styles.filterActive}>
-            <Text style={styles.filterActiveText}>Recomandate</Text>
+            <Text style={styles.filterActiveText}>
+              {t("shop.recommended")}
+            </Text>
           </View>
-          <Text style={styles.filterText}>Teme</Text>
-          <Text style={styles.filterText}>Profil</Text>
+          <Text style={styles.filterText}>{t("shop.themes")}</Text>
+          <Text style={styles.filterText}>{t("shop.profile")}</Text>
         </View>
 
         <View style={styles.items}>
-          {ITEMS.map((item) => (
+          {items.map((item) => (
             <View key={item.title} style={styles.item}>
-              <View style={[styles.itemArt, { backgroundColor: item.accent }]}>
-                <Ionicons color={COLORS.ink} name={item.icon} size={38} />
+              <View
+                style={[
+                  styles.itemArt,
+                  { backgroundColor: item.accent },
+                ]}
+              >
+                <Ionicons
+                  color={COLORS.ink}
+                  name={item.icon}
+                  size={38}
+                />
               </View>
               <Text style={styles.itemCategory}>{item.category}</Text>
               <Text style={styles.itemTitle}>{item.title}</Text>
@@ -92,31 +113,21 @@ export default function ShopScreen() {
           ))}
         </View>
 
-        <Text style={styles.notice}>
-          Shop-ul este momentan un prototip vizual. Economia reală și
-          inventarul se conectează ulterior la backend.
-        </Text>
+        <Text style={styles.notice}>{t("shop.notice")}</Text>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    backgroundColor: COLORS.paper,
-    flex: 1,
-  },
+  safeArea: { backgroundColor: COLORS.paper, flex: 1 },
   content: {
     gap: SPACING.large,
     paddingBottom: 30,
     paddingHorizontal: SPACING.medium,
     paddingTop: 12,
   },
-  header: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 12,
-  },
+  header: { alignItems: "center", flexDirection: "row", gap: 12 },
   backButton: {
     alignItems: "center",
     backgroundColor: COLORS.white,
@@ -127,21 +138,14 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     width: 46,
   },
-  headerCopy: {
-    flex: 1,
-  },
+  headerCopy: { flex: 1 },
   eyebrow: {
     color: COLORS.vermilion,
     fontSize: 10,
     fontWeight: "900",
     letterSpacing: 1.4,
   },
-  title: {
-    color: COLORS.ink,
-    fontSize: 24,
-    fontWeight: "900",
-    marginTop: 2,
-  },
+  title: { color: COLORS.ink, fontSize: 24, fontWeight: "900", marginTop: 2 },
   wallet: {
     alignItems: "center",
     backgroundColor: COLORS.white,
@@ -153,11 +157,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 9,
   },
-  walletText: {
-    color: COLORS.ink,
-    fontSize: 14,
-    fontWeight: "900",
-  },
+  walletText: { color: COLORS.ink, fontSize: 14, fontWeight: "900" },
   banner: {
     alignItems: "center",
     backgroundColor: COLORS.ink,
@@ -166,6 +166,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     padding: 20,
   },
+  bannerCopyWrap: { flex: 1, paddingRight: 10 },
   bannerEyebrow: {
     color: COLORS.sakuraSoft,
     fontSize: 10,
@@ -183,7 +184,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     lineHeight: 16,
     marginTop: 6,
-    maxWidth: 235,
+    maxWidth: 240,
   },
   filters: {
     alignItems: "center",
@@ -213,11 +214,7 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     textAlign: "center",
   },
-  items: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 12,
-  },
+  items: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
   item: {
     backgroundColor: COLORS.white,
     borderColor: COLORS.line,
@@ -240,23 +237,14 @@ const styles = StyleSheet.create({
     marginTop: 11,
     textTransform: "uppercase",
   },
-  itemTitle: {
-    color: COLORS.ink,
-    fontSize: 14,
-    fontWeight: "900",
-    marginTop: 3,
-  },
+  itemTitle: { color: COLORS.ink, fontSize: 14, fontWeight: "900", marginTop: 3 },
   priceRow: {
     alignItems: "center",
     flexDirection: "row",
     gap: 5,
     marginTop: 10,
   },
-  price: {
-    color: COLORS.inkSoft,
-    fontSize: 13,
-    fontWeight: "900",
-  },
+  price: { color: COLORS.inkSoft, fontSize: 13, fontWeight: "900" },
   notice: {
     color: COLORS.muted,
     fontSize: 11,

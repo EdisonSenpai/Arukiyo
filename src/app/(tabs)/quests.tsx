@@ -1,35 +1,38 @@
 import { Ionicons } from "@expo/vector-icons";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useTranslation } from "react-i18next";
 
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { COLORS, RADII, SPACING } from "@/constants/theme";
 
-const QUESTS = [
-  {
-    icon: "footsteps" as const,
-    title: "Primii pași",
-    description: "Parcurge 1.500 de pași.",
-    reward: "+50 XP",
-    accent: COLORS.sakuraSoft,
-  },
-  {
-    icon: "map" as const,
-    title: "Cartograf începător",
-    description: "Descoperă 3 celule noi.",
-    reward: "+20 monede",
-    accent: COLORS.matchaSoft,
-  },
-  {
-    icon: "book" as const,
-    title: "O poveste nouă",
-    description: "Citește istoria unui landmark.",
-    reward: "+1 ștampilă",
-    accent: COLORS.paperStrong,
-  },
-];
-
 export default function QuestsScreen() {
+  const { t } = useTranslation();
+
+  const quests = [
+    {
+      icon: "footsteps" as const,
+      title: t("quests.firstSteps"),
+      description: t("quests.firstStepsDescription"),
+      reward: "+50 XP",
+      accent: COLORS.sakuraSoft,
+    },
+    {
+      icon: "map" as const,
+      title: t("quests.beginnerCartographer"),
+      description: t("quests.beginnerCartographerDescription"),
+      reward: t("quests.coinsReward"),
+      accent: COLORS.matchaSoft,
+    },
+    {
+      icon: "book" as const,
+      title: t("quests.newStory"),
+      description: t("quests.newStoryDescription"),
+      reward: t("quests.stampReward"),
+      accent: COLORS.paperStrong,
+    },
+  ];
+
   return (
     <SafeAreaView edges={["top"]} style={styles.safeArea}>
       <ScrollView
@@ -37,39 +40,62 @@ export default function QuestsScreen() {
         showsVerticalScrollIndicator={false}
       >
         <ScreenHeader
-          eyebrow="Provocări"
-          subtitle="Misiuni mici, călătorii mari."
-          title="Misiuni"
+          eyebrow={t("quests.eyebrow")}
+          subtitle={t("quests.subtitle")}
+          title={t("quests.title")}
         />
 
         <View style={styles.streakCard}>
           <View style={styles.streakIcon}>
-            <Ionicons color={COLORS.vermilion} name="flame" size={28} />
+            <Ionicons
+              color={COLORS.vermilion}
+              name="flame"
+              size={28}
+            />
           </View>
           <View style={styles.streakCopy}>
-            <Text style={styles.streakTitle}>Streak de explorare</Text>
-            <Text style={styles.streakValue}>0 zile</Text>
+            <Text style={styles.streakTitle}>
+              {t("quests.streakTitle")}
+            </Text>
+            <Text style={styles.streakValue}>
+              {t("quests.streakValue")}
+            </Text>
           </View>
-          <Text style={styles.streakHint}>Ieși azi pentru a începe</Text>
+          <Text style={styles.streakHint}>
+            {t("quests.streakHint")}
+          </Text>
         </View>
 
         <View style={styles.segment}>
           <View style={styles.segmentActive}>
-            <Text style={styles.segmentActiveText}>Zilnice</Text>
+            <Text style={styles.segmentActiveText}>
+              {t("quests.daily")}
+            </Text>
           </View>
-          <Text style={styles.segmentText}>Săptămânale</Text>
-          <Text style={styles.segmentText}>Lunare</Text>
+          <Text style={styles.segmentText}>{t("quests.weekly")}</Text>
+          <Text style={styles.segmentText}>{t("quests.monthly")}</Text>
         </View>
 
         <View style={styles.questList}>
-          {QUESTS.map((quest) => (
+          {quests.map((quest) => (
             <View key={quest.title} style={styles.questCard}>
-              <View style={[styles.questIcon, { backgroundColor: quest.accent }]}>
-                <Ionicons color={COLORS.ink} name={quest.icon} size={23} />
+              <View
+                style={[
+                  styles.questIcon,
+                  { backgroundColor: quest.accent },
+                ]}
+              >
+                <Ionicons
+                  color={COLORS.ink}
+                  name={quest.icon}
+                  size={23}
+                />
               </View>
               <View style={styles.questBody}>
                 <Text style={styles.questTitle}>{quest.title}</Text>
-                <Text style={styles.questDescription}>{quest.description}</Text>
+                <Text style={styles.questDescription}>
+                  {quest.description}
+                </Text>
                 <View style={styles.track}>
                   <View style={styles.fill} />
                 </View>
@@ -82,9 +108,11 @@ export default function QuestsScreen() {
         <View style={styles.chestCard}>
           <Ionicons color={COLORS.gold} name="gift" size={34} />
           <View style={styles.chestCopy}>
-            <Text style={styles.chestTitle}>Cufărul zilei</Text>
+            <Text style={styles.chestTitle}>
+              {t("quests.dailyChest")}
+            </Text>
             <Text style={styles.chestDescription}>
-              Completează toate cele 3 misiuni pentru o recompensă bonus.
+              {t("quests.dailyChestDescription")}
             </Text>
           </View>
           <Text style={styles.chestProgress}>0/3</Text>
@@ -95,10 +123,7 @@ export default function QuestsScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    backgroundColor: COLORS.paper,
-    flex: 1,
-  },
+  safeArea: { backgroundColor: COLORS.paper, flex: 1 },
   content: {
     gap: SPACING.large,
     paddingBottom: 36,
@@ -121,9 +146,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     width: 52,
   },
-  streakCopy: {
-    flex: 1,
-  },
+  streakCopy: { flex: 1 },
   streakTitle: {
     color: "rgba(255,255,255,0.65)",
     fontSize: 12,
@@ -139,7 +162,7 @@ const styles = StyleSheet.create({
     color: COLORS.sakuraSoft,
     fontSize: 10,
     fontWeight: "800",
-    maxWidth: 72,
+    maxWidth: 90,
     textAlign: "right",
   },
   segment: {
@@ -166,13 +189,11 @@ const styles = StyleSheet.create({
   segmentText: {
     color: COLORS.muted,
     flex: 1,
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "800",
     textAlign: "center",
   },
-  questList: {
-    gap: 12,
-  },
+  questList: { gap: 12 },
   questCard: {
     alignItems: "center",
     backgroundColor: COLORS.white,
@@ -190,19 +211,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     width: 48,
   },
-  questBody: {
-    flex: 1,
-  },
-  questTitle: {
-    color: COLORS.ink,
-    fontSize: 14,
-    fontWeight: "900",
-  },
-  questDescription: {
-    color: COLORS.muted,
-    fontSize: 12,
-    marginTop: 3,
-  },
+  questBody: { flex: 1 },
+  questTitle: { color: COLORS.ink, fontSize: 14, fontWeight: "900" },
+  questDescription: { color: COLORS.muted, fontSize: 12, marginTop: 3 },
   track: {
     backgroundColor: COLORS.mist,
     borderRadius: RADII.pill,
@@ -210,16 +221,12 @@ const styles = StyleSheet.create({
     marginTop: 10,
     overflow: "hidden",
   },
-  fill: {
-    backgroundColor: COLORS.vermilion,
-    height: "100%",
-    width: "2%",
-  },
+  fill: { backgroundColor: COLORS.vermilion, height: "100%", width: "2%" },
   reward: {
     color: COLORS.vermilion,
     fontSize: 10,
     fontWeight: "900",
-    maxWidth: 58,
+    maxWidth: 64,
     textAlign: "right",
   },
   chestCard: {
@@ -232,23 +239,13 @@ const styles = StyleSheet.create({
     gap: 13,
     padding: 16,
   },
-  chestCopy: {
-    flex: 1,
-  },
-  chestTitle: {
-    color: COLORS.ink,
-    fontSize: 15,
-    fontWeight: "900",
-  },
+  chestCopy: { flex: 1 },
+  chestTitle: { color: COLORS.ink, fontSize: 15, fontWeight: "900" },
   chestDescription: {
     color: COLORS.muted,
     fontSize: 11,
     lineHeight: 16,
     marginTop: 3,
   },
-  chestProgress: {
-    color: COLORS.gold,
-    fontSize: 16,
-    fontWeight: "900",
-  },
+  chestProgress: { color: COLORS.gold, fontSize: 16, fontWeight: "900" },
 });

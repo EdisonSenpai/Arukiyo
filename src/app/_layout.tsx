@@ -4,6 +4,7 @@ import { StatusBar } from "expo-status-bar";
 
 import { COLORS } from "@/constants/theme";
 import { migrateExplorationDatabase } from "@/lib/exploration-db";
+import { LanguageProvider } from "@/providers/LanguageProvider";
 
 export default function RootLayout() {
   return (
@@ -11,17 +12,21 @@ export default function RootLayout() {
       databaseName="arukiyo-exploration.db"
       onInit={migrateExplorationDatabase}
     >
-      <StatusBar style="dark" />
-      <Stack
-        screenOptions={{
-          animation: "slide_from_right",
-          contentStyle: { backgroundColor: COLORS.paper },
-          headerShown: false,
-        }}
-      >
-        <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="shop" />
-      </Stack>
+      <LanguageProvider>
+        <StatusBar style="dark" />
+        <Stack
+          screenOptions={{
+            animation: "slide_from_right",
+            contentStyle: { backgroundColor: COLORS.paper },
+            headerShown: false,
+          }}
+        >
+          <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="shop" />
+          <Stack.Screen name="settings" />
+          <Stack.Screen name="language" />
+        </Stack>
+      </LanguageProvider>
     </SQLiteProvider>
   );
 }

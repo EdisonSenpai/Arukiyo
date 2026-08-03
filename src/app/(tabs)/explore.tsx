@@ -10,7 +10,8 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { ExplorationMap } from "@/components/ExplorationMap";
 import { ScreenHeader } from "@/components/ScreenHeader";
@@ -19,6 +20,7 @@ import { useExplorationSession } from "@/hooks/useExplorationSession";
 import { formatApproximateCoordinate } from "@/lib/home-location";
 
 export default function ExploreScreen() {
+  const { i18n, t } = useTranslation();
   const exploration = useExplorationSession();
   const [recenterToken, setRecenterToken] = useState(0);
 
@@ -28,21 +30,30 @@ export default function ExploreScreen() {
     exploration.permission?.canAskAgain === false &&
     !permissionGranted;
 
+  const completionText = useMemo(
+    () =>
+      new Intl.NumberFormat(i18n.resolvedLanguage ?? "en", {
+        maximumFractionDigits: 1,
+        minimumFractionDigits: 1,
+      }).format(exploration.homeZoneCompletion),
+    [exploration.homeZoneCompletion, i18n.resolvedLanguage],
+  );
+
   const confirmSaveHome = () => {
     Alert.alert(
       exploration.homeLocation
-        ? "Muți zona Home?"
-        : "Setezi zona Home?",
-      "Coordonatele exacte rămân criptate pe telefon. Harta folosește Home doar pentru zona locală de progres.",
+        ? t("explore.confirmMoveHomeTitle")
+        : t("explore.confirmHomeTitle"),
+      t("explore.confirmHomeCopy"),
       [
-        { style: "cancel", text: "Renunță" },
+        { style: "cancel", text: t("explore.cancel") },
         {
           onPress: () => {
             void exploration.saveCurrentAsHome();
           },
           text: exploration.homeLocation
-            ? "Mută Home"
-            : "Setează Home",
+            ? t("explore.moveHome")
+            : t("explore.setHome"),
         },
       ],
     );
@@ -50,16 +61,16 @@ export default function ExploreScreen() {
 
   const confirmRemoveHome = () => {
     Alert.alert(
-      "Ștergi zona Home?",
-      "Celulele descoperite rămân în jurnalul local.",
+      t("explore.confirmDeleteHomeTitle"),
+      t("explore.confirmDeleteHomeCopy"),
       [
-        { style: "cancel", text: "Păstrează" },
+        { style: "cancel", text: t("explore.keep") },
         {
           onPress: () => {
             void exploration.removeHome();
           },
           style: "destructive",
-          text: "Șterge Home",
+          text: t("explore.deleteHome"),
         },
       ],
     );
@@ -67,16 +78,16 @@ export default function ExploreScreen() {
 
   const confirmClearExploration = () => {
     Alert.alert(
-      "Resetezi ceața explorată?",
-      "Toate hexagoanele descoperite în Stage 2B vor fi șterse de pe telefon.",
+      t("explore.confirmResetTitle"),
+      t("explore.confirmResetCopy"),
       [
-        { style: "cancel", text: "Renunță" },
+        { style: "cancel", text: t("explore.cancel") },
         {
           onPress: () => {
             void exploration.clearExploration();
           },
           style: "destructive",
-          text: "Resetează",
+          text: t("explore.reset"),
         },
       ],
     );
@@ -87,9 +98,9 @@ export default function ExploreScreen() {
       <View style={styles.page}>
         <View style={styles.header}>
           <ScreenHeader
-            eyebrow="Stage 2B"
-            subtitle="Harta reală, hexagoane H3 și primul fog of war."
-            title="Explorează"
+            eyebrow={t("explore.eyebrow")}
+            subtitle={t("explore.subtitle")}
+            title={t("explore.title")}
             trailing={
               <View
                 style={[
@@ -107,10 +118,10 @@ export default function ExploreScreen() {
                 />
                 <Text style={styles.gpsText}>
                   {exploration.isSessionActive
-                    ? "Explorare activă"
+                    ? t("explore.sessionActive")
                     : permissionGranted
-                      ? "GPS pregătit"
-                      : "GPS inactiv"}
+                      ? t("explore.gpsReady")
+                      : t("explore.gpsInactive")}
                 </Text>
               </View>
             }
@@ -177,8 +188,8 @@ export default function ExploreScreen() {
               )}
               <Text style={styles.primaryButtonText}>
                 {exploration.isSessionActive
-                  ? "Oprește sesiunea"
-                  : "Pornește explorarea"}
+                  ? t("explore.stopSession")
+                  : t("explore.startSession")}
               </Text>
             </Pressable>
 
@@ -193,11 +204,7 @@ export default function ExploreScreen() {
                 pressed && styles.pressed,
               ]}
             >
-              <Ionicons
-                color={COLORS.ink}
-                name="locate"
-                size={22}
-              />
+              <Ionicons color={COLORS.ink} name="locate" size={22} />
             </Pressable>
           </View>
 
@@ -214,25 +221,25 @@ export default function ExploreScreen() {
                 size={19}
               />
               <Text style={styles.settingsButtonText}>
-                Activează locația din setările aplicației
+                {t("explore.openSettings")}
               </Text>
             </Pressable>
           ) : null}
 
           <View style={styles.progressCard}>
             <View style={styles.progressHeader}>
-              <View>
+              <View style={styles.progressHeaderCopy}>
                 <Text style={styles.cardEyebrow}>
-                  ZONA LOCALĂ HOME
+                  {t("explore.localHomeArea")}
                 </Text>
                 <Text style={styles.progressTitle}>
                   {exploration.homeLocation
-                    ? "Progresul din jurul casei"
-                    : "Progresul zonei curente"}
+                    ? t("explore.homeProgress")
+                    : t("explore.currentAreaProgress")}
                 </Text>
               </View>
               <Text style={styles.percent}>
-                {exploration.homeZoneCompletion.toFixed(1)}%
+                {completionText}%
               </Text>
             </View>
 
@@ -252,12 +259,15 @@ export default function ExploreScreen() {
 
             <View style={styles.progressMeta}>
               <Text style={styles.metaText}>
-                {exploration.homeZoneExploredCount} /{" "}
-                {exploration.homeZoneTotalCount || 0} hexagoane
+                {t("explore.hexagons", {
+                  explored: exploration.homeZoneExploredCount,
+                  total: exploration.homeZoneTotalCount || 0,
+                })}
               </Text>
               <Text style={styles.metaText}>
-                Total descoperite:{" "}
-                {exploration.exploredCellCount}
+                {t("explore.totalDiscovered", {
+                  count: exploration.exploredCellCount,
+                })}
               </Text>
             </View>
           </View>
@@ -273,7 +283,7 @@ export default function ExploreScreen() {
               </View>
               <View style={styles.discoveryCopy}>
                 <Text style={styles.discoveryTitle}>
-                  Hexagon nou descoperit!
+                  {t("explore.newHexagon")}
                 </Text>
                 <Text
                   numberOfLines={1}
@@ -302,8 +312,8 @@ export default function ExploreScreen() {
             <View style={styles.homeCopy}>
               <Text style={styles.homeTitle}>
                 {exploration.homeLocation
-                  ? "Zona Home configurată"
-                  : "Zona Home lipsește"}
+                  ? t("explore.zoneConfigured")
+                  : t("explore.zoneMissing")}
               </Text>
               <Text style={styles.homeDescription}>
                 {exploration.homeLocation
@@ -312,7 +322,7 @@ export default function ExploreScreen() {
                     )} · ${formatApproximateCoordinate(
                       exploration.homeLocation.longitude,
                     )}`
-                  : "Citește poziția și setează punctul de pornire."}
+                  : t("explore.zoneMissingCopy")}
               </Text>
             </View>
 
@@ -323,7 +333,9 @@ export default function ExploreScreen() {
                 style={styles.smallAction}
               >
                 <Text style={styles.smallActionText}>
-                  {exploration.homeLocation ? "Mută" : "Setează"}
+                  {exploration.homeLocation
+                    ? t("explore.move")
+                    : t("explore.set")}
                 </Text>
               </Pressable>
             ) : null}
@@ -331,7 +343,7 @@ export default function ExploreScreen() {
 
           <View style={styles.statsRow}>
             <Stat
-              label="Celula curentă"
+              label={t("explore.currentCell")}
               value={
                 exploration.currentCell
                   ? exploration.currentCell.slice(-6)
@@ -339,7 +351,7 @@ export default function ExploreScreen() {
               }
             />
             <Stat
-              label="Precizie GPS"
+              label={t("explore.gpsAccuracy")}
               value={
                 exploration.currentLocation?.coords.accuracy == null
                   ? "—"
@@ -349,9 +361,11 @@ export default function ExploreScreen() {
               }
             />
             <Stat
-              label="Mod"
+              label={t("explore.mode")}
               value={
-                exploration.isSessionActive ? "Live" : "Pauză"
+                exploration.isSessionActive
+                  ? t("explore.live")
+                  : t("explore.paused")
               }
             />
           </View>
@@ -368,7 +382,7 @@ export default function ExploreScreen() {
                   size={18}
                 />
                 <Text style={styles.dangerText}>
-                  Șterge Home
+                  {t("explore.deleteHome")}
                 </Text>
               </Pressable>
             ) : null}
@@ -383,7 +397,7 @@ export default function ExploreScreen() {
                 size={18}
               />
               <Text style={styles.dangerText}>
-                Resetează ceața
+                {t("explore.resetFog")}
               </Text>
             </Pressable>
           </View>
@@ -395,9 +409,7 @@ export default function ExploreScreen() {
               size={22}
             />
             <Text style={styles.noticeText}>
-              Urmărirea rulează numai cât aplicația este deschisă.
-              Locația în fundal va fi introdusă separat, cu controale
-              clare de confidențialitate.
+              {t("explore.foregroundNotice")}
             </Text>
           </View>
         </ScrollView>
@@ -424,13 +436,8 @@ function Stat({
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    backgroundColor: COLORS.paper,
-    flex: 1,
-  },
-  page: {
-    flex: 1,
-  },
+  safeArea: { backgroundColor: COLORS.paper, flex: 1 },
+  page: { flex: 1 },
   header: {
     paddingHorizontal: SPACING.medium,
     paddingTop: 10,
@@ -441,10 +448,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.medium,
     paddingTop: 14,
   },
-  panel: {
-    flexGrow: 0,
-    maxHeight: 310,
-  },
+  panel: { flexGrow: 0, maxHeight: 310 },
   panelContent: {
     gap: 12,
     paddingBottom: 28,
@@ -459,6 +463,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     flexDirection: "row",
     gap: 6,
+    maxWidth: 118,
     paddingHorizontal: 9,
     paddingVertical: 7,
   },
@@ -472,11 +477,10 @@ const styles = StyleSheet.create({
     height: 8,
     width: 8,
   },
-  gpsDotActive: {
-    backgroundColor: COLORS.success,
-  },
+  gpsDotActive: { backgroundColor: COLORS.success },
   gpsText: {
     color: COLORS.inkSoft,
+    flexShrink: 1,
     fontSize: 9,
     fontWeight: "900",
   },
@@ -496,10 +500,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     lineHeight: 17,
   },
-  actionRow: {
-    flexDirection: "row",
-    gap: 10,
-  },
+  actionRow: { flexDirection: "row", gap: 10 },
   primaryButton: {
     alignItems: "center",
     backgroundColor: COLORS.ink,
@@ -511,9 +512,7 @@ const styles = StyleSheet.create({
     minHeight: 50,
     paddingHorizontal: 14,
   },
-  stopButton: {
-    backgroundColor: COLORS.vermilion,
-  },
+  stopButton: { backgroundColor: COLORS.vermilion },
   primaryButtonText: {
     color: COLORS.white,
     fontSize: 13,
@@ -557,6 +556,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
   },
+  progressHeaderCopy: { flex: 1, paddingRight: 8 },
   cardEyebrow: {
     color: COLORS.matcha,
     fontSize: 9,
@@ -588,14 +588,12 @@ const styles = StyleSheet.create({
   },
   progressMeta: {
     flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
     justifyContent: "space-between",
     marginTop: 8,
   },
-  metaText: {
-    color: COLORS.muted,
-    fontSize: 10,
-    fontWeight: "700",
-  },
+  metaText: { color: COLORS.muted, fontSize: 10, fontWeight: "700" },
   discoveryCard: {
     alignItems: "center",
     backgroundColor: COLORS.sakuraSoft,
@@ -614,24 +612,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     width: 42,
   },
-  discoveryCopy: {
-    flex: 1,
-  },
-  discoveryTitle: {
-    color: COLORS.ink,
-    fontSize: 13,
-    fontWeight: "900",
-  },
-  discoveryCode: {
-    color: COLORS.muted,
-    fontSize: 9,
-    marginTop: 3,
-  },
-  reward: {
-    color: COLORS.vermilion,
-    fontSize: 11,
-    fontWeight: "900",
-  },
+  discoveryCopy: { flex: 1 },
+  discoveryTitle: { color: COLORS.ink, fontSize: 13, fontWeight: "900" },
+  discoveryCode: { color: COLORS.muted, fontSize: 9, marginTop: 3 },
+  reward: { color: COLORS.vermilion, fontSize: 11, fontWeight: "900" },
   homeCard: {
     alignItems: "center",
     backgroundColor: COLORS.white,
@@ -650,34 +634,17 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     width: 44,
   },
-  homeCopy: {
-    flex: 1,
-  },
-  homeTitle: {
-    color: COLORS.ink,
-    fontSize: 13,
-    fontWeight: "900",
-  },
-  homeDescription: {
-    color: COLORS.muted,
-    fontSize: 10,
-    marginTop: 3,
-  },
+  homeCopy: { flex: 1 },
+  homeTitle: { color: COLORS.ink, fontSize: 13, fontWeight: "900" },
+  homeDescription: { color: COLORS.muted, fontSize: 10, marginTop: 3 },
   smallAction: {
     backgroundColor: COLORS.paperStrong,
     borderRadius: RADII.pill,
     paddingHorizontal: 11,
     paddingVertical: 8,
   },
-  smallActionText: {
-    color: COLORS.ink,
-    fontSize: 10,
-    fontWeight: "900",
-  },
-  statsRow: {
-    flexDirection: "row",
-    gap: 8,
-  },
+  smallActionText: { color: COLORS.ink, fontSize: 10, fontWeight: "900" },
+  statsRow: { flexDirection: "row", gap: 8 },
   stat: {
     alignItems: "center",
     backgroundColor: COLORS.white,
@@ -688,21 +655,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 5,
     paddingVertical: 11,
   },
-  statValue: {
-    color: COLORS.ink,
-    fontSize: 12,
-    fontWeight: "900",
-  },
+  statValue: { color: COLORS.ink, fontSize: 12, fontWeight: "900" },
   statLabel: {
     color: COLORS.muted,
     fontSize: 8,
     marginTop: 4,
     textAlign: "center",
   },
-  utilityRow: {
-    flexDirection: "row",
-    gap: 8,
-  },
+  utilityRow: { flexDirection: "row", gap: 8 },
   utilityButton: {
     alignItems: "center",
     backgroundColor: COLORS.white,
@@ -736,8 +696,5 @@ const styles = StyleSheet.create({
     fontSize: 10,
     lineHeight: 16,
   },
-  pressed: {
-    opacity: 0.72,
-    transform: [{ scale: 0.99 }],
-  },
+  pressed: { opacity: 0.72, transform: [{ scale: 0.99 }] },
 });

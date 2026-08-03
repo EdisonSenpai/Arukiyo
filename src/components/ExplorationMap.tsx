@@ -3,6 +3,7 @@ import {
   GeoJSONSource,
   Layer,
   Map,
+  Marker,
 } from "@maplibre/maplibre-react-native";
 import { Ionicons } from "@expo/vector-icons";
 import type * as Location from "expo-location";
@@ -19,6 +20,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 
 import {
   BUCHAREST_CENTER,
@@ -45,6 +47,7 @@ export function ExplorationMap({
   homeLocation,
   recenterToken,
 }: ExplorationMapProps) {
+  const { t } = useTranslation();
   const cameraRef = useRef<any>(null);
   const [isMapReady, setIsMapReady] = useState(false);
   const [mapFailed, setMapFailed] = useState(false);
@@ -79,18 +82,6 @@ export function ExplorationMap({
     [currentLocation],
   );
 
-  const homePoint = useMemo(
-    () =>
-      homeLocation
-        ? createPointFeatureCollection(
-            homeLocation.longitude,
-            homeLocation.latitude,
-            { kind: "home" },
-          )
-        : null,
-    [homeLocation],
-  );
-
   useEffect(() => {
     if (!isMapReady) {
       return;
@@ -119,9 +110,7 @@ export function ExplorationMap({
         compassPosition={{ top: 12, right: 12 }}
         logo={false}
         mapStyle={MAP_STYLE_URL}
-        onDidFailLoadingMap={() => {
-          setMapFailed(true);
-        }}
+        onDidFailLoadingMap={() => setMapFailed(true)}
         onDidFinishLoadingMap={() => {
           setIsMapReady(true);
           setMapFailed(false);
@@ -162,17 +151,16 @@ export function ExplorationMap({
                     "match",
                     ["get", "state"],
                     "explored",
-                    0.12,
+                    0.06,
                     "current",
-                    0.34,
-                    0.64,
+                    0.22,
+                    0.48,
                   ],
                 } as never
               }
               source="arukiyo-exploration-grid"
               type="fill"
             />
-
             <Layer
               id="arukiyo-cell-outline"
               paint={
@@ -184,7 +172,7 @@ export function ExplorationMap({
                     COLORS.sakura,
                     "current",
                     COLORS.gold,
-                    "rgba(255,255,255,0.42)",
+                    "rgba(255,255,255,0.48)",
                   ],
                   "line-opacity": 0.95,
                   "line-width": [
@@ -192,7 +180,7 @@ export function ExplorationMap({
                     ["get", "state"],
                     "current",
                     3,
-                    1.25,
+                    1.2,
                   ],
                 } as never
               }
@@ -202,37 +190,31 @@ export function ExplorationMap({
           </GeoJSONSource>
         ) : null}
 
-        {homePoint ? (
-          <GeoJSONSource
-            data={homePoint as never}
-            id="arukiyo-home-point"
+        {homeLocation ? (
+          <Marker
+            anchor="bottom"
+            id="arukiyo-home-marker"
+            lngLat={[
+              homeLocation.longitude,
+              homeLocation.latitude,
+            ]}
           >
-            <Layer
-              id="arukiyo-home-halo"
-              paint={
-                {
-                  "circle-color": COLORS.vermilion,
-                  "circle-opacity": 0.2,
-                  "circle-radius": 18,
-                } as never
-              }
-              source="arukiyo-home-point"
-              type="circle"
-            />
-            <Layer
-              id="arukiyo-home-dot"
-              paint={
-                {
-                  "circle-color": COLORS.vermilion,
-                  "circle-radius": 7,
-                  "circle-stroke-color": COLORS.white,
-                  "circle-stroke-width": 3,
-                } as never
-              }
-              source="arukiyo-home-point"
-              type="circle"
-            />
-          </GeoJSONSource>
+            <View style={styles.homeMarkerWrap}>
+              <View style={styles.homeLabel}>
+                <Text style={styles.homeLabelText}>
+                  {t("map.home")}
+                </Text>
+              </View>
+              <View style={styles.homeMarkerBubble}>
+                <Ionicons
+                  color={COLORS.white}
+                  name="home"
+                  size={22}
+                />
+              </View>
+              <View style={styles.homeMarkerTip} />
+            </View>
+          </Marker>
         ) : null}
 
         {currentPoint ? (
@@ -273,7 +255,7 @@ export function ExplorationMap({
         <View style={styles.loadingOverlay}>
           <ActivityIndicator color={COLORS.vermilion} />
           <Text style={styles.loadingText}>
-            Se încarcă lumea Arukiyo…
+            {t("map.loading")}
           </Text>
         </View>
       ) : null}
@@ -286,23 +268,22 @@ export function ExplorationMap({
             size={30}
           />
           <Text style={styles.failureTitle}>
-            Harta nu s-a încărcat
+            {t("map.failureTitle")}
           </Text>
           <Text style={styles.failureText}>
-            Verifică internetul. În Stage 2B folosim tile-urile demo
-            MapLibre.
+            {t("map.failureCopy")}
           </Text>
         </View>
       ) : null}
 
       <View style={styles.legend}>
-        <LegendDot color={COLORS.ink} label="Ceață" />
-        <LegendDot color={COLORS.sakura} label="Descoperit" />
-        <LegendDot color={COLORS.gold} label="Curent" />
+        <LegendDot color={COLORS.ink} label={t("map.fog")} />
+        <LegendDot color={COLORS.sakura} label={t("map.discovered")} />
+        <LegendDot color={COLORS.gold} label={t("map.current")} />
       </View>
 
       <Pressable
-        accessibilityLabel="Recentrează harta"
+        accessibilityLabel={t("map.recenter")}
         onPress={() => {
           cameraRef.current?.easeTo({
             center: target,
@@ -347,9 +328,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     position: "relative",
   },
-  map: {
-    flex: 1,
-  },
+  map: { flex: 1 },
   loadingOverlay: {
     alignItems: "center",
     backgroundColor: "rgba(247,241,231,0.94)",
@@ -417,6 +396,42 @@ const styles = StyleSheet.create({
     position: "absolute",
     right: 14,
     width: 48,
+  },
+  homeMarkerWrap: {
+    alignItems: "center",
+    minWidth: 60,
+  },
+  homeLabel: {
+    backgroundColor: COLORS.ink,
+    borderRadius: RADII.pill,
+    marginBottom: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  homeLabelText: {
+    color: COLORS.white,
+    fontSize: 8,
+    fontWeight: "900",
+    letterSpacing: 0.8,
+  },
+  homeMarkerBubble: {
+    alignItems: "center",
+    backgroundColor: COLORS.vermilion,
+    borderColor: COLORS.white,
+    borderRadius: 24,
+    borderWidth: 3,
+    height: 46,
+    justifyContent: "center",
+    width: 46,
+  },
+  homeMarkerTip: {
+    borderLeftColor: "transparent",
+    borderLeftWidth: 7,
+    borderRightColor: "transparent",
+    borderRightWidth: 7,
+    borderTopColor: COLORS.vermilion,
+    borderTopWidth: 10,
+    marginTop: -2,
   },
   pressed: {
     opacity: 0.7,

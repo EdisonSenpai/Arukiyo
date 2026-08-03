@@ -8,6 +8,10 @@ type CountRow = {
   count: number;
 };
 
+type SettingRow = {
+  value: string;
+};
+
 export async function migrateExplorationDatabase(
   database: SQLiteDatabase,
 ): Promise<void> {
@@ -25,7 +29,44 @@ export async function migrateExplorationDatabase(
 
     CREATE INDEX IF NOT EXISTS idx_explored_cells_resolution
       ON explored_cells (resolution);
+
+    CREATE TABLE IF NOT EXISTS app_settings (
+      key TEXT PRIMARY KEY NOT NULL,
+      value TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
   `);
+}
+
+export async function getAppSetting(
+  database: SQLiteDatabase,
+  key: string,
+): Promise<string | null> {
+  const row = await database.getFirstAsync<SettingRow>(
+    "SELECT value FROM app_settings WHERE key = ? LIMIT 1",
+    key,
+  );
+
+  return row?.value ?? null;
+}
+
+export async function setAppSetting(
+  database: SQLiteDatabase,
+  key: string,
+  value: string,
+): Promise<void> {
+  await database.runAsync(
+    `
+      INSERT INTO app_settings (key, value, updated_at)
+      VALUES (?, ?, ?)
+      ON CONFLICT(key) DO UPDATE SET
+        value = excluded.value,
+        updated_at = excluded.updated_at
+    `,
+    key,
+    value,
+    new Date().toISOString(),
+  );
 }
 
 export async function loadExploredCellIds(
