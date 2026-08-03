@@ -1,28 +1,25 @@
 {
   "expo": {
-    "name": "Arukiyo",
-    "slug": "Arukiyo",
-    "version": "1.0.0",
-    "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
-    "scheme": "arukiyo",
-    "userInterfaceStyle": "automatic",
-    "ios": {
-      "icon": "./assets/expo.icon"
-    },
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
+        "foregroundImage": "./assets/images/android-icon-foreground.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
+      "package": "com.eduarddonea.arukiyo",
       "predictiveBackGestureEnabled": false
     },
-    "web": {
-      "output": "static",
-      "favicon": "./assets/images/favicon.png"
+    "experiments": {
+      "reactCompiler": true,
+      "typedRoutes": true
     },
+    "icon": "./assets/images/icon.png",
+    "ios": {
+      "icon": "./assets/expo.icon"
+    },
+    "name": "Arukiyo",
+    "orientation": "portrait",
     "plugins": [
       "expo-router",
       [
@@ -34,9 +31,13 @@
         }
       ]
     ],
-    "experiments": {
-      "typedRoutes": true,
-      "reactCompiler": true
+    "scheme": "arukiyo",
+    "slug": "arukiyo",
+    "userInterfaceStyle": "automatic",
+    "version": "1.0.0",
+    "web": {
+      "favicon": "./assets/images/favicon.png",
+      "output": "static"
     }
   }
 }
