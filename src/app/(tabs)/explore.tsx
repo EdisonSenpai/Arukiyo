@@ -1,8 +1,4 @@
 import { Ionicons } from "@expo/vector-icons";
-import * as Location from "expo-location";
-import * as SecureStore from "expo-secure-store";
-import { LinearGradient } from "expo-linear-gradient";
-import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -14,359 +10,734 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useState } from "react";
 
+import { ExplorationMap } from "@/components/ExplorationMap";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { COLORS, RADII, SPACING } from "@/constants/theme";
-
-const HOME_KEY = "arukiyo.home-location.v1";
-
-type HomeLocation = {
-  latitude: number;
-  longitude: number;
-  accuracy: number | null;
-  createdAt: string;
-};
-
-function distanceMeters(from: HomeLocation, latitude: number, longitude: number) {
-  const radius = 6_371_000;
-  const radians = (value: number) => (value * Math.PI) / 180;
-  const latitudeDelta = radians(latitude - from.latitude);
-  const longitudeDelta = radians(longitude - from.longitude);
-  const fromLatitude = radians(from.latitude);
-  const toLatitude = radians(latitude);
-
-  const value =
-    Math.sin(latitudeDelta / 2) ** 2 +
-    Math.cos(fromLatitude) *
-      Math.cos(toLatitude) *
-      Math.sin(longitudeDelta / 2) ** 2;
-
-  return 2 * radius * Math.atan2(Math.sqrt(value), Math.sqrt(1 - value));
-}
-
-function formatDistance(value: number | null) {
-  if (value === null) return "—";
-  return value < 1000 ? `${Math.round(value)} m` : `${(value / 1000).toFixed(2)} km`;
-}
+import { useExplorationSession } from "@/hooks/useExplorationSession";
+import { formatApproximateCoordinate } from "@/lib/home-location";
 
 export default function ExploreScreen() {
-  const [permission, requestPermission] = Location.useForegroundPermissions();
-  const [current, setCurrent] = useState<Location.LocationObject | null>(null);
-  const [home, setHome] = useState<HomeLocation | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const exploration = useExplorationSession();
+  const [recenterToken, setRecenterToken] = useState(0);
 
-  useEffect(() => {
-    void (async () => {
-      try {
-        const raw = await SecureStore.getItemAsync(HOME_KEY);
-        if (raw) setHome(JSON.parse(raw) as HomeLocation);
-      } catch {
-        setError("Zona Home salvată nu a putut fi citită.");
-      }
-    })();
-  }, []);
+  const permissionGranted =
+    exploration.permission?.granted === true;
+  const permissionBlocked =
+    exploration.permission?.canAskAgain === false &&
+    !permissionGranted;
 
-  const distanceFromHome = useMemo(() => {
-    if (!home || !current) return null;
-    return distanceMeters(
-      home,
-      current.coords.latitude,
-      current.coords.longitude,
-    );
-  }, [current, home]);
-
-  const refreshLocation = async () => {
-    setBusy(true);
-    setError(null);
-
-    try {
-      if (!(await Location.hasServicesEnabledAsync())) {
-        setError("GPS-ul este oprit. Activează serviciile de localizare.");
-        return;
-      }
-
-      let activePermission = permission;
-      if (!activePermission?.granted) {
-        activePermission = await requestPermission();
-      }
-
-      if (!activePermission.granted) {
-        setError(
-          activePermission.canAskAgain
-            ? "Arukiyo are nevoie de permisiunea de locație."
-            : "Permisiunea este blocată. Activeaz-o din setările aplicației.",
-        );
-        return;
-      }
-
-      const result = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.High,
-        mayShowUserSettingsDialog: true,
-      });
-      setCurrent(result);
-    } catch (reason) {
-      setError(
-        reason instanceof Error ? `Eroare GPS: ${reason.message}` : "Poziția nu a putut fi citită.",
-      );
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const saveHome = async () => {
-    if (!current) return;
-
-    setBusy(true);
-    setError(null);
-
-    try {
-      const nextHome: HomeLocation = {
-        latitude: current.coords.latitude,
-        longitude: current.coords.longitude,
-        accuracy: current.coords.accuracy,
-        createdAt: new Date().toISOString(),
-      };
-
-      await SecureStore.setItemAsync(HOME_KEY, JSON.stringify(nextHome));
-      setHome(nextHome);
-    } catch {
-      setError("Zona Home nu a putut fi salvată securizat.");
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const deleteHome = async () => {
-    setBusy(true);
-    try {
-      await SecureStore.deleteItemAsync(HOME_KEY);
-      setHome(null);
-    } catch {
-      setError("Zona Home nu a putut fi ștearsă.");
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const confirmHome = () =>
+  const confirmSaveHome = () => {
     Alert.alert(
-      home ? "Actualizezi zona Home?" : "Setezi zona Home?",
-      "Coordonatele exacte vor fi salvate criptat numai pe telefon.",
+      exploration.homeLocation
+        ? "Muți zona Home?"
+        : "Setezi zona Home?",
+      "Coordonatele exacte rămân criptate pe telefon. Harta folosește Home doar pentru zona locală de progres.",
       [
-        { text: "Renunță", style: "cancel" },
-        { text: home ? "Actualizează" : "Setează Home", onPress: () => void saveHome() },
+        { style: "cancel", text: "Renunță" },
+        {
+          onPress: () => {
+            void exploration.saveCurrentAsHome();
+          },
+          text: exploration.homeLocation
+            ? "Mută Home"
+            : "Setează Home",
+        },
       ],
     );
+  };
 
-  const confirmDelete = () =>
-    Alert.alert("Ștergi zona Home?", "Punctul privat de pornire va fi eliminat.", [
-      { text: "Păstrează", style: "cancel" },
-      { text: "Șterge", style: "destructive", onPress: () => void deleteHome() },
-    ]);
+  const confirmRemoveHome = () => {
+    Alert.alert(
+      "Ștergi zona Home?",
+      "Celulele descoperite rămân în jurnalul local.",
+      [
+        { style: "cancel", text: "Păstrează" },
+        {
+          onPress: () => {
+            void exploration.removeHome();
+          },
+          style: "destructive",
+          text: "Șterge Home",
+        },
+      ],
+    );
+  };
 
-  const granted = permission?.granted === true;
-  const accuracy = current?.coords.accuracy;
+  const confirmClearExploration = () => {
+    Alert.alert(
+      "Resetezi ceața explorată?",
+      "Toate hexagoanele descoperite în Stage 2B vor fi șterse de pe telefon.",
+      [
+        { style: "cancel", text: "Renunță" },
+        {
+          onPress: () => {
+            void exploration.clearExploration();
+          },
+          style: "destructive",
+          text: "Resetează",
+        },
+      ],
+    );
+  };
 
   return (
     <SafeAreaView edges={["top"]} style={styles.safeArea}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <ScreenHeader
-          eyebrow="Stage 2A"
-          title="Explorează"
-          subtitle="Poziția reală și punctul tău privat de pornire."
-          trailing={
-            <View style={[styles.gpsPill, granted && styles.gpsPillActive]}>
-              <View style={[styles.gpsDot, granted && styles.gpsDotActive]} />
-              <Text style={styles.gpsText}>{granted ? "GPS permis" : "GPS inactiv"}</Text>
-            </View>
-          }
-        />
-
-        <LinearGradient colors={[COLORS.matchaSoft, "#F0E7D7"]} style={styles.map}>
-          <View style={[styles.fog, styles.fogOne]} />
-          <View style={[styles.fog, styles.fogTwo]} />
-          <View style={[styles.path, styles.pathOne]} />
-          <View style={[styles.path, styles.pathTwo]} />
-
-          {home ? (
-            <View style={styles.homeMarker}>
-              <Ionicons color={COLORS.white} name="home" size={23} />
-            </View>
-          ) : null}
-
-          {current ? (
-            <>
-              <View style={styles.currentPulse} />
-              <View style={styles.currentMarker}>
-                <Ionicons color={COLORS.white} name="navigate" size={20} />
+      <View style={styles.page}>
+        <View style={styles.header}>
+          <ScreenHeader
+            eyebrow="Stage 2B"
+            subtitle="Harta reală, hexagoane H3 și primul fog of war."
+            title="Explorează"
+            trailing={
+              <View
+                style={[
+                  styles.gpsPill,
+                  exploration.isSessionActive &&
+                    styles.gpsPillActive,
+                ]}
+              >
+                <View
+                  style={[
+                    styles.gpsDot,
+                    exploration.isSessionActive &&
+                      styles.gpsDotActive,
+                  ]}
+                />
+                <Text style={styles.gpsText}>
+                  {exploration.isSessionActive
+                    ? "Explorare activă"
+                    : permissionGranted
+                      ? "GPS pregătit"
+                      : "GPS inactiv"}
+                </Text>
               </View>
-            </>
+            }
+          />
+        </View>
+
+        <View style={styles.mapArea}>
+          <ExplorationMap
+            cellFeatures={exploration.cellFeatures}
+            currentLocation={exploration.currentLocation}
+            homeLocation={exploration.homeLocation}
+            recenterToken={recenterToken}
+          />
+        </View>
+
+        <ScrollView
+          contentContainerStyle={styles.panelContent}
+          nestedScrollEnabled
+          showsVerticalScrollIndicator={false}
+          style={styles.panel}
+        >
+          {exploration.error ? (
+            <View style={styles.errorCard}>
+              <Ionicons
+                color={COLORS.vermilion}
+                name="alert-circle"
+                size={21}
+              />
+              <Text style={styles.errorText}>
+                {exploration.error}
+              </Text>
+            </View>
           ) : null}
 
-          <View style={styles.mapBadge}>
-            <Ionicons color={COLORS.matcha} name="shield-checkmark-outline" size={18} />
-            <Text style={styles.mapBadgeText}>Coordonate mascate</Text>
+          <View style={styles.actionRow}>
+            <Pressable
+              disabled={
+                exploration.isBusy ||
+                exploration.isHydrating
+              }
+              onPress={() => {
+                void exploration.startSession();
+              }}
+              style={({ pressed }) => [
+                styles.primaryButton,
+                exploration.isSessionActive &&
+                  styles.stopButton,
+                (pressed || exploration.isBusy) &&
+                  styles.pressed,
+              ]}
+            >
+              {exploration.isBusy ? (
+                <ActivityIndicator color={COLORS.white} />
+              ) : (
+                <Ionicons
+                  color={COLORS.white}
+                  name={
+                    exploration.isSessionActive
+                      ? "stop"
+                      : "navigate"
+                  }
+                  size={20}
+                />
+              )}
+              <Text style={styles.primaryButtonText}>
+                {exploration.isSessionActive
+                  ? "Oprește sesiunea"
+                  : "Pornește explorarea"}
+              </Text>
+            </Pressable>
+
+            <Pressable
+              disabled={exploration.isBusy}
+              onPress={() => {
+                void exploration.refreshLocation();
+                setRecenterToken((value) => value + 1);
+              }}
+              style={({ pressed }) => [
+                styles.iconButton,
+                pressed && styles.pressed,
+              ]}
+            >
+              <Ionicons
+                color={COLORS.ink}
+                name="locate"
+                size={22}
+              />
+            </Pressable>
           </View>
 
-          <View style={styles.mapStatus}>
-            <Text style={styles.mapStatusEyebrow}>POZIȚIA CURENTĂ</Text>
-            <Text style={styles.mapStatusTitle}>
-              {current
-                ? `${current.coords.latitude.toFixed(3)} · ${current.coords.longitude.toFixed(3)}`
-                : "Încă necunoscută"}
-            </Text>
-            <Text style={styles.mapStatusCopy}>
-              {current
-                ? `Precizie raportată: ${accuracy == null ? "necunoscută" : `±${Math.round(accuracy)} m`}`
-                : "Apasă butonul de mai jos pentru prima citire GPS."}
+          {permissionBlocked ? (
+            <Pressable
+              onPress={() => {
+                void Linking.openSettings();
+              }}
+              style={styles.settingsButton}
+            >
+              <Ionicons
+                color={COLORS.ink}
+                name="settings-outline"
+                size={19}
+              />
+              <Text style={styles.settingsButtonText}>
+                Activează locația din setările aplicației
+              </Text>
+            </Pressable>
+          ) : null}
+
+          <View style={styles.progressCard}>
+            <View style={styles.progressHeader}>
+              <View>
+                <Text style={styles.cardEyebrow}>
+                  ZONA LOCALĂ HOME
+                </Text>
+                <Text style={styles.progressTitle}>
+                  {exploration.homeLocation
+                    ? "Progresul din jurul casei"
+                    : "Progresul zonei curente"}
+                </Text>
+              </View>
+              <Text style={styles.percent}>
+                {exploration.homeZoneCompletion.toFixed(1)}%
+              </Text>
+            </View>
+
+            <View style={styles.progressTrack}>
+              <View
+                style={[
+                  styles.progressFill,
+                  {
+                    width: `${Math.max(
+                      2,
+                      exploration.homeZoneCompletion,
+                    )}%`,
+                  },
+                ]}
+              />
+            </View>
+
+            <View style={styles.progressMeta}>
+              <Text style={styles.metaText}>
+                {exploration.homeZoneExploredCount} /{" "}
+                {exploration.homeZoneTotalCount || 0} hexagoane
+              </Text>
+              <Text style={styles.metaText}>
+                Total descoperite:{" "}
+                {exploration.exploredCellCount}
+              </Text>
+            </View>
+          </View>
+
+          {exploration.lastDiscoveredCell ? (
+            <View style={styles.discoveryCard}>
+              <View style={styles.discoveryIcon}>
+                <Ionicons
+                  color={COLORS.vermilion}
+                  name="sparkles"
+                  size={22}
+                />
+              </View>
+              <View style={styles.discoveryCopy}>
+                <Text style={styles.discoveryTitle}>
+                  Hexagon nou descoperit!
+                </Text>
+                <Text
+                  numberOfLines={1}
+                  style={styles.discoveryCode}
+                >
+                  {exploration.lastDiscoveredCell}
+                </Text>
+              </View>
+              <Text style={styles.reward}>+10 XP</Text>
+            </View>
+          ) : null}
+
+          <View style={styles.homeCard}>
+            <View style={styles.homeIcon}>
+              <Ionicons
+                color={COLORS.vermilion}
+                name={
+                  exploration.homeLocation
+                    ? "home"
+                    : "home-outline"
+                }
+                size={23}
+              />
+            </View>
+
+            <View style={styles.homeCopy}>
+              <Text style={styles.homeTitle}>
+                {exploration.homeLocation
+                  ? "Zona Home configurată"
+                  : "Zona Home lipsește"}
+              </Text>
+              <Text style={styles.homeDescription}>
+                {exploration.homeLocation
+                  ? `${formatApproximateCoordinate(
+                      exploration.homeLocation.latitude,
+                    )} · ${formatApproximateCoordinate(
+                      exploration.homeLocation.longitude,
+                    )}`
+                  : "Citește poziția și setează punctul de pornire."}
+              </Text>
+            </View>
+
+            {exploration.currentLocation ? (
+              <Pressable
+                disabled={exploration.isBusy}
+                onPress={confirmSaveHome}
+                style={styles.smallAction}
+              >
+                <Text style={styles.smallActionText}>
+                  {exploration.homeLocation ? "Mută" : "Setează"}
+                </Text>
+              </Pressable>
+            ) : null}
+          </View>
+
+          <View style={styles.statsRow}>
+            <Stat
+              label="Celula curentă"
+              value={
+                exploration.currentCell
+                  ? exploration.currentCell.slice(-6)
+                  : "—"
+              }
+            />
+            <Stat
+              label="Precizie GPS"
+              value={
+                exploration.currentLocation?.coords.accuracy == null
+                  ? "—"
+                  : `±${Math.round(
+                      exploration.currentLocation.coords.accuracy,
+                    )} m`
+              }
+            />
+            <Stat
+              label="Mod"
+              value={
+                exploration.isSessionActive ? "Live" : "Pauză"
+              }
+            />
+          </View>
+
+          <View style={styles.utilityRow}>
+            {exploration.homeLocation ? (
+              <Pressable
+                onPress={confirmRemoveHome}
+                style={styles.utilityButton}
+              >
+                <Ionicons
+                  color={COLORS.vermilion}
+                  name="home-outline"
+                  size={18}
+                />
+                <Text style={styles.dangerText}>
+                  Șterge Home
+                </Text>
+              </Pressable>
+            ) : null}
+
+            <Pressable
+              onPress={confirmClearExploration}
+              style={styles.utilityButton}
+            >
+              <Ionicons
+                color={COLORS.vermilion}
+                name="refresh-outline"
+                size={18}
+              />
+              <Text style={styles.dangerText}>
+                Resetează ceața
+              </Text>
+            </Pressable>
+          </View>
+
+          <View style={styles.noticeCard}>
+            <Ionicons
+              color={COLORS.matcha}
+              name="information-circle-outline"
+              size={22}
+            />
+            <Text style={styles.noticeText}>
+              Urmărirea rulează numai cât aplicația este deschisă.
+              Locația în fundal va fi introdusă separat, cu controale
+              clare de confidențialitate.
             </Text>
           </View>
-        </LinearGradient>
-
-        {error ? (
-          <View style={styles.errorCard}>
-            <Ionicons color={COLORS.vermilion} name="alert-circle" size={22} />
-            <Text style={styles.errorText}>{error}</Text>
-          </View>
-        ) : null}
-
-        <Pressable
-          disabled={busy}
-          onPress={() => void refreshLocation()}
-          style={({ pressed }) => [styles.primaryButton, (pressed || busy) && styles.pressed]}
-        >
-          {busy ? (
-            <ActivityIndicator color={COLORS.white} />
-          ) : (
-            <Ionicons color={COLORS.white} name={granted ? "locate" : "location"} size={21} />
-          )}
-          <Text style={styles.primaryButtonText}>
-            {current ? "Actualizează poziția" : granted ? "Citește poziția" : "Permite locația și continuă"}
-          </Text>
-        </Pressable>
-
-        {!granted && permission?.canAskAgain === false ? (
-          <Pressable onPress={() => void Linking.openSettings()} style={styles.secondaryButton}>
-            <Ionicons color={COLORS.ink} name="settings-outline" size={20} />
-            <Text style={styles.secondaryButtonText}>Deschide setările aplicației</Text>
-          </Pressable>
-        ) : null}
-
-        <View style={styles.homeCard}>
-          <View style={styles.homeIcon}>
-            <Ionicons color={COLORS.vermilion} name={home ? "home" : "home-outline"} size={25} />
-          </View>
-          <View style={styles.homeCopy}>
-            <Text style={styles.homeTitle}>
-              {home ? "Zona Home este configurată" : "Zona Home nu este configurată"}
-            </Text>
-            <Text style={styles.homeDescription}>
-              {home
-                ? `Zonă aproximativă: ${home.latitude.toFixed(3)} · ${home.longitude.toFixed(3)}`
-                : "Citește poziția, apoi setează punctul privat din care începe explorarea."}
-            </Text>
-            {home ? <Text style={styles.homeMeta}>Distanță curentă: {formatDistance(distanceFromHome)}</Text> : null}
-          </View>
-        </View>
-
-        {current ? (
-          <Pressable disabled={busy} onPress={confirmHome} style={styles.homeButton}>
-            <Ionicons color={COLORS.ink} name={home ? "refresh" : "flag"} size={20} />
-            <Text style={styles.homeButtonText}>
-              {home ? "Mută Home la poziția actuală" : "Setează poziția actuală ca Home"}
-            </Text>
-          </Pressable>
-        ) : null}
-
-        {home ? (
-          <Pressable disabled={busy} onPress={confirmDelete} style={styles.removeButton}>
-            <Ionicons color={COLORS.vermilion} name="trash-outline" size={19} />
-            <Text style={styles.removeButtonText}>Șterge zona Home de pe telefon</Text>
-          </Pressable>
-        ) : null}
-
-        <View style={styles.statsRow}>
-          <Stat label="Permisiune" value={granted ? "Activă" : "Inactivă"} />
-          <Stat label="Precizie" value={accuracy == null ? "—" : `±${Math.round(accuracy)} m`} />
-          <Stat label="Față de Home" value={formatDistance(distanceFromHome)} />
-        </View>
-
-        <View style={styles.privacyCard}>
-          <Ionicons color={COLORS.matcha} name="lock-closed" size={24} />
-          <View style={styles.privacyCopy}>
-            <Text style={styles.privacyTitle}>Home rămâne privat</Text>
-            <Text style={styles.privacyDescription}>
-              Coordonatele exacte sunt criptate în Secure Store. Nu sunt trimise unui server în acest stage.
-            </Text>
-          </View>
-        </View>
-
-        <Text style={styles.notice}>
-          În Stage 2B adăugăm harta reală, celulele explorabile și prima zonă fog of war.
-        </Text>
-      </ScrollView>
+        </ScrollView>
+      </View>
     </SafeAreaView>
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function Stat({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
   return (
     <View style={styles.stat}>
-      <Text numberOfLines={1} style={styles.statValue}>{value}</Text>
+      <Text numberOfLines={1} style={styles.statValue}>
+        {value}
+      </Text>
       <Text style={styles.statLabel}>{label}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: { backgroundColor: COLORS.paper, flex: 1 },
-  content: { gap: SPACING.large, paddingBottom: 36, paddingHorizontal: SPACING.medium, paddingTop: 12 },
-  gpsPill: { alignItems: "center", backgroundColor: COLORS.white, borderColor: COLORS.line, borderRadius: RADII.pill, borderWidth: 1, flexDirection: "row", gap: 7, paddingHorizontal: 10, paddingVertical: 8 },
-  gpsPillActive: { backgroundColor: COLORS.matchaSoft, borderColor: "#BFD1C0" },
-  gpsDot: { backgroundColor: COLORS.muted, borderRadius: 4, height: 8, width: 8 },
-  gpsDotActive: { backgroundColor: COLORS.success },
-  gpsText: { color: COLORS.inkSoft, fontSize: 10, fontWeight: "900" },
-  map: { borderColor: COLORS.line, borderRadius: RADII.large, borderWidth: 1, height: 390, overflow: "hidden", position: "relative" },
-  fog: { backgroundColor: "rgba(255,255,255,0.72)", borderRadius: 180, position: "absolute" },
-  fogOne: { height: 260, left: -70, top: -55, width: 260 },
-  fogTwo: { bottom: -80, height: 280, right: -65, width: 280 },
-  path: { backgroundColor: "rgba(255,255,255,0.95)", borderRadius: RADII.pill, position: "absolute" },
-  pathOne: { height: 24, left: 45, top: 170, transform: [{ rotate: "18deg" }], width: 310 },
-  pathTwo: { height: 20, left: 150, top: 105, transform: [{ rotate: "102deg" }], width: 245 },
-  homeMarker: { alignItems: "center", backgroundColor: COLORS.vermilion, borderColor: COLORS.white, borderRadius: 29, borderWidth: 4, height: 58, justifyContent: "center", left: 58, position: "absolute", top: 116, width: 58 },
-  currentPulse: { backgroundColor: "rgba(60,134,99,0.18)", borderRadius: 52, height: 104, position: "absolute", right: 72, top: 116, width: 104 },
-  currentMarker: { alignItems: "center", backgroundColor: COLORS.success, borderColor: COLORS.white, borderRadius: 25, borderWidth: 4, height: 50, justifyContent: "center", position: "absolute", right: 99, top: 143, width: 50 },
-  mapBadge: { alignItems: "center", backgroundColor: "rgba(255,255,255,0.94)", borderRadius: RADII.pill, flexDirection: "row", gap: 7, left: 14, paddingHorizontal: 11, paddingVertical: 8, position: "absolute", top: 14 },
-  mapBadgeText: { color: COLORS.inkSoft, fontSize: 10, fontWeight: "800" },
-  mapStatus: { backgroundColor: "rgba(23,35,31,0.92)", borderRadius: RADII.medium, bottom: 15, left: 15, padding: 14, position: "absolute", right: 15 },
-  mapStatusEyebrow: { color: COLORS.sakuraSoft, fontSize: 9, fontWeight: "900", letterSpacing: 1.2 },
-  mapStatusTitle: { color: COLORS.white, fontSize: 20, fontWeight: "900", marginTop: 4 },
-  mapStatusCopy: { color: "rgba(255,255,255,0.64)", fontSize: 11, marginTop: 4 },
-  errorCard: { alignItems: "flex-start", backgroundColor: "#FBE9E6", borderColor: "#EDC0B9", borderRadius: RADII.medium, borderWidth: 1, flexDirection: "row", gap: 10, padding: 14 },
-  errorText: { color: COLORS.inkSoft, flex: 1, fontSize: 12, lineHeight: 18 },
-  primaryButton: { alignItems: "center", backgroundColor: COLORS.ink, borderRadius: RADII.medium, flexDirection: "row", gap: 9, justifyContent: "center", minHeight: 54, paddingHorizontal: 16 },
-  primaryButtonText: { color: COLORS.white, fontSize: 14, fontWeight: "900" },
-  secondaryButton: { alignItems: "center", backgroundColor: COLORS.white, borderColor: COLORS.line, borderRadius: RADII.medium, borderWidth: 1, flexDirection: "row", gap: 9, justifyContent: "center", padding: 14 },
-  secondaryButtonText: { color: COLORS.ink, fontSize: 13, fontWeight: "800" },
-  homeCard: { alignItems: "center", backgroundColor: COLORS.white, borderColor: COLORS.line, borderRadius: RADII.medium, borderWidth: 1, flexDirection: "row", gap: 12, padding: 15 },
-  homeIcon: { alignItems: "center", backgroundColor: COLORS.sakuraSoft, borderRadius: 15, height: 50, justifyContent: "center", width: 50 },
-  homeCopy: { flex: 1 },
-  homeTitle: { color: COLORS.ink, fontSize: 15, fontWeight: "900" },
-  homeDescription: { color: COLORS.muted, fontSize: 12, lineHeight: 17, marginTop: 4 },
-  homeMeta: { color: COLORS.success, fontSize: 11, fontWeight: "900", marginTop: 5 },
-  homeButton: { alignItems: "center", backgroundColor: COLORS.sakuraSoft, borderColor: "#E7B9C5", borderRadius: RADII.medium, borderWidth: 1, flexDirection: "row", gap: 9, justifyContent: "center", padding: 14 },
-  homeButtonText: { color: COLORS.ink, fontSize: 13, fontWeight: "900" },
-  removeButton: { alignItems: "center", backgroundColor: COLORS.white, borderColor: "#EDC0B9", borderRadius: RADII.medium, borderWidth: 1, flexDirection: "row", gap: 8, justifyContent: "center", padding: 13 },
-  removeButtonText: { color: COLORS.vermilion, fontSize: 12, fontWeight: "900" },
-  statsRow: { flexDirection: "row", gap: 9 },
-  stat: { alignItems: "center", backgroundColor: COLORS.white, borderColor: COLORS.line, borderRadius: RADII.medium, borderWidth: 1, flex: 1, paddingHorizontal: 5, paddingVertical: 14 },
-  statValue: { color: COLORS.ink, fontSize: 13, fontWeight: "900" },
-  statLabel: { color: COLORS.muted, fontSize: 9, marginTop: 5, textAlign: "center" },
-  privacyCard: { alignItems: "flex-start", backgroundColor: COLORS.matchaSoft, borderColor: "#BFD1C0", borderRadius: RADII.medium, borderWidth: 1, flexDirection: "row", gap: 12, padding: 15 },
-  privacyCopy: { flex: 1 },
-  privacyTitle: { color: COLORS.ink, fontSize: 14, fontWeight: "900" },
-  privacyDescription: { color: COLORS.inkSoft, fontSize: 11, lineHeight: 17, marginTop: 4 },
-  pressed: { opacity: 0.72 },
-  notice: { color: COLORS.muted, fontSize: 11, lineHeight: 17, textAlign: "center" },
+  safeArea: {
+    backgroundColor: COLORS.paper,
+    flex: 1,
+  },
+  page: {
+    flex: 1,
+  },
+  header: {
+    paddingHorizontal: SPACING.medium,
+    paddingTop: 10,
+  },
+  mapArea: {
+    flex: 1,
+    minHeight: 330,
+    paddingHorizontal: SPACING.medium,
+    paddingTop: 14,
+  },
+  panel: {
+    flexGrow: 0,
+    maxHeight: 310,
+  },
+  panelContent: {
+    gap: 12,
+    paddingBottom: 28,
+    paddingHorizontal: SPACING.medium,
+    paddingTop: 14,
+  },
+  gpsPill: {
+    alignItems: "center",
+    backgroundColor: COLORS.white,
+    borderColor: COLORS.line,
+    borderRadius: RADII.pill,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: 6,
+    paddingHorizontal: 9,
+    paddingVertical: 7,
+  },
+  gpsPillActive: {
+    backgroundColor: COLORS.matchaSoft,
+    borderColor: "#BFD1C0",
+  },
+  gpsDot: {
+    backgroundColor: COLORS.muted,
+    borderRadius: 4,
+    height: 8,
+    width: 8,
+  },
+  gpsDotActive: {
+    backgroundColor: COLORS.success,
+  },
+  gpsText: {
+    color: COLORS.inkSoft,
+    fontSize: 9,
+    fontWeight: "900",
+  },
+  errorCard: {
+    alignItems: "flex-start",
+    backgroundColor: "#FBE9E6",
+    borderColor: "#EDC0B9",
+    borderRadius: RADII.medium,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: 9,
+    padding: 12,
+  },
+  errorText: {
+    color: COLORS.inkSoft,
+    flex: 1,
+    fontSize: 11,
+    lineHeight: 17,
+  },
+  actionRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  primaryButton: {
+    alignItems: "center",
+    backgroundColor: COLORS.ink,
+    borderRadius: RADII.medium,
+    flex: 1,
+    flexDirection: "row",
+    gap: 8,
+    justifyContent: "center",
+    minHeight: 50,
+    paddingHorizontal: 14,
+  },
+  stopButton: {
+    backgroundColor: COLORS.vermilion,
+  },
+  primaryButtonText: {
+    color: COLORS.white,
+    fontSize: 13,
+    fontWeight: "900",
+  },
+  iconButton: {
+    alignItems: "center",
+    backgroundColor: COLORS.white,
+    borderColor: COLORS.line,
+    borderRadius: RADII.medium,
+    borderWidth: 1,
+    height: 50,
+    justifyContent: "center",
+    width: 52,
+  },
+  settingsButton: {
+    alignItems: "center",
+    backgroundColor: COLORS.white,
+    borderColor: COLORS.line,
+    borderRadius: RADII.medium,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: 8,
+    justifyContent: "center",
+    padding: 12,
+  },
+  settingsButtonText: {
+    color: COLORS.ink,
+    fontSize: 12,
+    fontWeight: "800",
+  },
+  progressCard: {
+    backgroundColor: COLORS.white,
+    borderColor: COLORS.line,
+    borderRadius: RADII.medium,
+    borderWidth: 1,
+    padding: 14,
+  },
+  progressHeader: {
+    alignItems: "flex-start",
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  cardEyebrow: {
+    color: COLORS.matcha,
+    fontSize: 9,
+    fontWeight: "900",
+    letterSpacing: 1.1,
+  },
+  progressTitle: {
+    color: COLORS.ink,
+    fontSize: 15,
+    fontWeight: "900",
+    marginTop: 3,
+  },
+  percent: {
+    color: COLORS.vermilion,
+    fontSize: 20,
+    fontWeight: "900",
+  },
+  progressTrack: {
+    backgroundColor: COLORS.mist,
+    borderRadius: RADII.pill,
+    height: 8,
+    marginTop: 13,
+    overflow: "hidden",
+  },
+  progressFill: {
+    backgroundColor: COLORS.sakura,
+    borderRadius: RADII.pill,
+    height: "100%",
+  },
+  progressMeta: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 8,
+  },
+  metaText: {
+    color: COLORS.muted,
+    fontSize: 10,
+    fontWeight: "700",
+  },
+  discoveryCard: {
+    alignItems: "center",
+    backgroundColor: COLORS.sakuraSoft,
+    borderColor: "#E7B9C5",
+    borderRadius: RADII.medium,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: 10,
+    padding: 12,
+  },
+  discoveryIcon: {
+    alignItems: "center",
+    backgroundColor: COLORS.white,
+    borderRadius: 14,
+    height: 42,
+    justifyContent: "center",
+    width: 42,
+  },
+  discoveryCopy: {
+    flex: 1,
+  },
+  discoveryTitle: {
+    color: COLORS.ink,
+    fontSize: 13,
+    fontWeight: "900",
+  },
+  discoveryCode: {
+    color: COLORS.muted,
+    fontSize: 9,
+    marginTop: 3,
+  },
+  reward: {
+    color: COLORS.vermilion,
+    fontSize: 11,
+    fontWeight: "900",
+  },
+  homeCard: {
+    alignItems: "center",
+    backgroundColor: COLORS.white,
+    borderColor: COLORS.line,
+    borderRadius: RADII.medium,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: 10,
+    padding: 12,
+  },
+  homeIcon: {
+    alignItems: "center",
+    backgroundColor: COLORS.sakuraSoft,
+    borderRadius: 14,
+    height: 44,
+    justifyContent: "center",
+    width: 44,
+  },
+  homeCopy: {
+    flex: 1,
+  },
+  homeTitle: {
+    color: COLORS.ink,
+    fontSize: 13,
+    fontWeight: "900",
+  },
+  homeDescription: {
+    color: COLORS.muted,
+    fontSize: 10,
+    marginTop: 3,
+  },
+  smallAction: {
+    backgroundColor: COLORS.paperStrong,
+    borderRadius: RADII.pill,
+    paddingHorizontal: 11,
+    paddingVertical: 8,
+  },
+  smallActionText: {
+    color: COLORS.ink,
+    fontSize: 10,
+    fontWeight: "900",
+  },
+  statsRow: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  stat: {
+    alignItems: "center",
+    backgroundColor: COLORS.white,
+    borderColor: COLORS.line,
+    borderRadius: RADII.medium,
+    borderWidth: 1,
+    flex: 1,
+    paddingHorizontal: 5,
+    paddingVertical: 11,
+  },
+  statValue: {
+    color: COLORS.ink,
+    fontSize: 12,
+    fontWeight: "900",
+  },
+  statLabel: {
+    color: COLORS.muted,
+    fontSize: 8,
+    marginTop: 4,
+    textAlign: "center",
+  },
+  utilityRow: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  utilityButton: {
+    alignItems: "center",
+    backgroundColor: COLORS.white,
+    borderColor: "#EDC0B9",
+    borderRadius: RADII.medium,
+    borderWidth: 1,
+    flex: 1,
+    flexDirection: "row",
+    gap: 6,
+    justifyContent: "center",
+    padding: 11,
+  },
+  dangerText: {
+    color: COLORS.vermilion,
+    fontSize: 10,
+    fontWeight: "900",
+  },
+  noticeCard: {
+    alignItems: "flex-start",
+    backgroundColor: COLORS.matchaSoft,
+    borderColor: "#BFD1C0",
+    borderRadius: RADII.medium,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: 9,
+    padding: 12,
+  },
+  noticeText: {
+    color: COLORS.inkSoft,
+    flex: 1,
+    fontSize: 10,
+    lineHeight: 16,
+  },
+  pressed: {
+    opacity: 0.72,
+    transform: [{ scale: 0.99 }],
+  },
 });

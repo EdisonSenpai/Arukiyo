@@ -43,7 +43,9 @@
         {
           "configureAndroidBackup": true
         }
-      ]
+      ],
+      "expo-sqlite",
+      "@maplibre/maplibre-react-native"
     ],
     "scheme": "arukiyo",
     "slug": "arukiyo",

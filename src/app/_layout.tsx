@@ -1,11 +1,16 @@
 import { Stack } from "expo-router";
+import { SQLiteProvider } from "expo-sqlite";
 import { StatusBar } from "expo-status-bar";
 
 import { COLORS } from "@/constants/theme";
+import { migrateExplorationDatabase } from "@/lib/exploration-db";
 
 export default function RootLayout() {
   return (
-    <>
+    <SQLiteProvider
+      databaseName="arukiyo-exploration.db"
+      onInit={migrateExplorationDatabase}
+    >
       <StatusBar style="dark" />
       <Stack
         screenOptions={{
@@ -17,6 +22,6 @@ export default function RootLayout() {
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="shop" />
       </Stack>
-    </>
+    </SQLiteProvider>
   );
 }
