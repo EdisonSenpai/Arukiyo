@@ -37,6 +37,7 @@ import {
   loadHomeLocation,
   saveHomeLocation,
 } from "@/lib/home-location";
+import { awardSessionRewards } from "@/lib/progression-db";
 import {
   evaluateSessionPoint,
   isAccurateEnoughForDiscovery,
@@ -491,6 +492,12 @@ export function useExplorationSession(): ExplorationSessionState {
           database,
           summary,
         );
+
+        try {
+          await awardSessionRewards(database, summary);
+        } catch {
+          setError(t("progression.errors.award"));
+        }
 
         setSessionElapsedSeconds(
           summary.durationSeconds,

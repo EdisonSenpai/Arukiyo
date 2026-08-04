@@ -122,6 +122,72 @@ export async function migrateExplorationDatabase(
     CREATE INDEX IF NOT EXISTS idx_exploration_points_session
       ON exploration_points (session_id, sequence);
 
+    CREATE TABLE IF NOT EXISTS player_progress (
+      id INTEGER PRIMARY KEY NOT NULL
+        CHECK (id = 1),
+      total_xp INTEGER NOT NULL DEFAULT 0,
+      coins INTEGER NOT NULL DEFAULT 0,
+      total_distance_meters REAL NOT NULL DEFAULT 0,
+      rewarded_sessions INTEGER NOT NULL DEFAULT 0,
+      updated_at TEXT NOT NULL
+    );
+
+    INSERT OR IGNORE INTO player_progress (
+      id,
+      total_xp,
+      coins,
+      total_distance_meters,
+      rewarded_sessions,
+      updated_at
+    )
+    VALUES (
+      1,
+      0,
+      0,
+      0,
+      0,
+      strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+    );
+
+    CREATE TABLE IF NOT EXISTS reward_events (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      session_id TEXT NOT NULL UNIQUE,
+      day_key TEXT NOT NULL,
+      awarded_at TEXT NOT NULL,
+      distance_xp INTEGER NOT NULL DEFAULT 0,
+      discovery_xp INTEGER NOT NULL DEFAULT 0,
+      completion_xp INTEGER NOT NULL DEFAULT 0,
+      first_session_xp INTEGER NOT NULL DEFAULT 0,
+      one_kilometer_xp INTEGER NOT NULL DEFAULT 0,
+      total_xp INTEGER NOT NULL DEFAULT 0,
+      distance_coins INTEGER NOT NULL DEFAULT 0,
+      discovery_coins INTEGER NOT NULL DEFAULT 0,
+      completion_coins INTEGER NOT NULL DEFAULT 0,
+      first_session_coins INTEGER NOT NULL DEFAULT 0,
+      one_kilometer_coins INTEGER NOT NULL DEFAULT 0,
+      total_coins INTEGER NOT NULL DEFAULT 0,
+      first_session_bonus INTEGER NOT NULL DEFAULT 0,
+      one_kilometer_bonus INTEGER NOT NULL DEFAULT 0,
+      previous_total_xp INTEGER NOT NULL DEFAULT 0,
+      new_total_xp INTEGER NOT NULL DEFAULT 0,
+      previous_level INTEGER NOT NULL DEFAULT 1,
+      new_level INTEGER NOT NULL DEFAULT 1,
+      FOREIGN KEY (session_id)
+        REFERENCES exploration_sessions (id)
+        ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_reward_events_day_key
+      ON reward_events (day_key);
+
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_reward_first_session_day
+      ON reward_events (day_key)
+      WHERE first_session_bonus = 1;
+
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_reward_one_kilometer_day
+      ON reward_events (day_key)
+      WHERE one_kilometer_bonus = 1;
+
     UPDATE exploration_sessions
     SET
       status = 'interrupted',

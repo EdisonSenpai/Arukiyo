@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import {
+  ActivityIndicator,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -11,9 +12,11 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 
 import { COLORS, RADII, SPACING } from "@/constants/theme";
+import { usePlayerProgress } from "@/hooks/usePlayerProgress";
 
 export default function ShopScreen() {
   const { t } = useTranslation();
+  const { isLoading, progress } = usePlayerProgress();
 
   const items = [
     {
@@ -40,7 +43,10 @@ export default function ShopScreen() {
   ];
 
   return (
-    <SafeAreaView edges={["top", "bottom"]} style={styles.safeArea}>
+    <SafeAreaView
+      edges={["top", "bottom"]}
+      style={styles.safeArea}
+    >
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
@@ -51,15 +57,36 @@ export default function ShopScreen() {
             onPress={() => router.back()}
             style={styles.backButton}
           >
-            <Ionicons color={COLORS.ink} name="arrow-back" size={23} />
+            <Ionicons
+              color={COLORS.ink}
+              name="arrow-back"
+              size={23}
+            />
           </Pressable>
           <View style={styles.headerCopy}>
-            <Text style={styles.eyebrow}>{t("shop.eyebrow")}</Text>
-            <Text style={styles.title}>{t("shop.title")}</Text>
+            <Text style={styles.eyebrow}>
+              {t("shop.eyebrow")}
+            </Text>
+            <Text style={styles.title}>
+              {t("shop.title")}
+            </Text>
           </View>
           <View style={styles.wallet}>
-            <Ionicons color={COLORS.gold} name="leaf" size={17} />
-            <Text style={styles.walletText}>0</Text>
+            <Ionicons
+              color={COLORS.gold}
+              name="leaf"
+              size={17}
+            />
+            {isLoading ? (
+              <ActivityIndicator
+                color={COLORS.gold}
+                size="small"
+              />
+            ) : (
+              <Text style={styles.walletText}>
+                {progress.coins}
+              </Text>
+            )}
           </View>
         </View>
 
@@ -75,7 +102,32 @@ export default function ShopScreen() {
               {t("shop.collectionCopy")}
             </Text>
           </View>
-          <Ionicons color={COLORS.sakura} name="flower" size={62} />
+          <Ionicons
+            color={COLORS.sakura}
+            name="flower"
+            size={62}
+          />
+        </View>
+
+        <View style={styles.walletNotice}>
+          <View style={styles.walletNoticeIcon}>
+            <Ionicons
+              color={COLORS.gold}
+              name="leaf"
+              size={22}
+            />
+          </View>
+          <View style={styles.walletNoticeCopy}>
+            <Text style={styles.walletNoticeTitle}>
+              {progress.coins}{" "}
+              {t("progression.coins")}
+            </Text>
+            <Text style={styles.walletNoticeText}>
+              {t(
+                "progression.shop.walletConnected",
+              )}
+            </Text>
+          </View>
         </View>
 
         <View style={styles.filters}>
@@ -84,50 +136,84 @@ export default function ShopScreen() {
               {t("shop.recommended")}
             </Text>
           </View>
-          <Text style={styles.filterText}>{t("shop.themes")}</Text>
-          <Text style={styles.filterText}>{t("shop.profile")}</Text>
+          <Text style={styles.filterText}>
+            {t("shop.themes")}
+          </Text>
+          <Text style={styles.filterText}>
+            {t("shop.profile")}
+          </Text>
         </View>
 
         <View style={styles.items}>
-          {items.map((item) => (
-            <View key={item.title} style={styles.item}>
-              <View
-                style={[
-                  styles.itemArt,
-                  { backgroundColor: item.accent },
-                ]}
-              >
-                <Ionicons
-                  color={COLORS.ink}
-                  name={item.icon}
-                  size={38}
-                />
+          {items.map((item) => {
+            const affordable =
+              progress.coins >= item.price;
+
+            return (
+              <View key={item.title} style={styles.item}>
+                <View
+                  style={[
+                    styles.itemArt,
+                    { backgroundColor: item.accent },
+                  ]}
+                >
+                  <Ionicons
+                    color={COLORS.ink}
+                    name={item.icon}
+                    size={38}
+                  />
+                </View>
+                <Text style={styles.itemCategory}>
+                  {item.category}
+                </Text>
+                <Text style={styles.itemTitle}>
+                  {item.title}
+                </Text>
+                <View style={styles.priceRow}>
+                  <Ionicons
+                    color={COLORS.gold}
+                    name="leaf"
+                    size={15}
+                  />
+                  <Text
+                    style={[
+                      styles.price,
+                      affordable &&
+                        styles.priceAffordable,
+                    ]}
+                  >
+                    {item.price}
+                  </Text>
+                </View>
               </View>
-              <Text style={styles.itemCategory}>{item.category}</Text>
-              <Text style={styles.itemTitle}>{item.title}</Text>
-              <View style={styles.priceRow}>
-                <Ionicons color={COLORS.gold} name="leaf" size={15} />
-                <Text style={styles.price}>{item.price}</Text>
-              </View>
-            </View>
-          ))}
+            );
+          })}
         </View>
 
-        <Text style={styles.notice}>{t("shop.notice")}</Text>
+        <Text style={styles.notice}>
+          {t("progression.shop.walletConnected")}
+        </Text>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: { backgroundColor: COLORS.paper, flex: 1 },
+  safeArea: {
+    backgroundColor: COLORS.paper,
+    flex: 1,
+  },
   content: {
     gap: SPACING.large,
     paddingBottom: 30,
     paddingHorizontal: SPACING.medium,
     paddingTop: 12,
   },
-  header: { alignItems: "center", flexDirection: "row", gap: 12 },
+  header: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 12,
+  },
   backButton: {
     alignItems: "center",
     backgroundColor: COLORS.white,
@@ -138,14 +224,21 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     width: 46,
   },
-  headerCopy: { flex: 1 },
+  headerCopy: {
+    flex: 1,
+  },
   eyebrow: {
     color: COLORS.vermilion,
     fontSize: 10,
     fontWeight: "900",
     letterSpacing: 1.4,
   },
-  title: { color: COLORS.ink, fontSize: 24, fontWeight: "900", marginTop: 2 },
+  title: {
+    color: COLORS.ink,
+    fontSize: 24,
+    fontWeight: "900",
+    marginTop: 2,
+  },
   wallet: {
     alignItems: "center",
     backgroundColor: COLORS.white,
@@ -154,10 +247,15 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     flexDirection: "row",
     gap: 6,
+    minWidth: 62,
     paddingHorizontal: 12,
     paddingVertical: 9,
   },
-  walletText: { color: COLORS.ink, fontSize: 14, fontWeight: "900" },
+  walletText: {
+    color: COLORS.ink,
+    fontSize: 14,
+    fontWeight: "900",
+  },
   banner: {
     alignItems: "center",
     backgroundColor: COLORS.ink,
@@ -166,7 +264,10 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     padding: 20,
   },
-  bannerCopyWrap: { flex: 1, paddingRight: 10 },
+  bannerCopyWrap: {
+    flex: 1,
+    paddingRight: 10,
+  },
   bannerEyebrow: {
     color: COLORS.sakuraSoft,
     fontSize: 10,
@@ -185,6 +286,38 @@ const styles = StyleSheet.create({
     lineHeight: 16,
     marginTop: 6,
     maxWidth: 240,
+  },
+  walletNotice: {
+    alignItems: "center",
+    backgroundColor: COLORS.white,
+    borderColor: COLORS.line,
+    borderRadius: RADII.medium,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: 11,
+    padding: 13,
+  },
+  walletNoticeIcon: {
+    alignItems: "center",
+    backgroundColor: COLORS.paperStrong,
+    borderRadius: 14,
+    height: 44,
+    justifyContent: "center",
+    width: 44,
+  },
+  walletNoticeCopy: {
+    flex: 1,
+  },
+  walletNoticeTitle: {
+    color: COLORS.ink,
+    fontSize: 14,
+    fontWeight: "900",
+  },
+  walletNoticeText: {
+    color: COLORS.muted,
+    fontSize: 10,
+    lineHeight: 15,
+    marginTop: 3,
   },
   filters: {
     alignItems: "center",
@@ -214,7 +347,11 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     textAlign: "center",
   },
-  items: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
+  items: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 12,
+  },
   item: {
     backgroundColor: COLORS.white,
     borderColor: COLORS.line,
@@ -237,14 +374,26 @@ const styles = StyleSheet.create({
     marginTop: 11,
     textTransform: "uppercase",
   },
-  itemTitle: { color: COLORS.ink, fontSize: 14, fontWeight: "900", marginTop: 3 },
+  itemTitle: {
+    color: COLORS.ink,
+    fontSize: 14,
+    fontWeight: "900",
+    marginTop: 3,
+  },
   priceRow: {
     alignItems: "center",
     flexDirection: "row",
     gap: 5,
     marginTop: 10,
   },
-  price: { color: COLORS.inkSoft, fontSize: 13, fontWeight: "900" },
+  price: {
+    color: COLORS.inkSoft,
+    fontSize: 13,
+    fontWeight: "900",
+  },
+  priceAffordable: {
+    color: COLORS.success,
+  },
   notice: {
     color: COLORS.muted,
     fontSize: 11,

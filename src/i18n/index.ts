@@ -5,6 +5,11 @@ import { en } from "@/i18n/locales/en";
 import { ja } from "@/i18n/locales/ja";
 import { ro } from "@/i18n/locales/ro";
 import {
+  progressionEn,
+  progressionJa,
+  progressionRo,
+} from "@/i18n/locales/progression";
+import {
   sessionEn,
   sessionJa,
   sessionRo,
@@ -30,18 +35,21 @@ void i18n.use(initReactI18next).init({
     en: {
       translation: {
         ...en,
+        progression: progressionEn,
         session: sessionEn,
       },
     },
     ja: {
       translation: {
         ...ja,
+        progression: progressionJa,
         session: sessionJa,
       },
     },
     ro: {
       translation: {
         ...ro,
+        progression: progressionRo,
         session: sessionRo,
       },
     },
