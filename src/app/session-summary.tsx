@@ -19,12 +19,20 @@ import {
   useState,
 } from "react";
 import { useTranslation } from "react-i18next";
+import Animated, {
+  FadeInDown,
+  FadeInUp,
+  ZoomIn,
+} from "react-native-reanimated";
 
+import { AnimatedCounter } from "@/components/AnimatedCounter";
+import { SessionRoutePreview } from "@/components/SessionRoutePreview";
 import { COLORS, RADII, SPACING } from "@/constants/theme";
 import {
   type ExplorationSessionDetails,
   getExplorationSessionDetails,
 } from "@/lib/exploration-db";
+import { triggerSessionCompleteFeedback } from "@/lib/feedback";
 import {
   awardSessionRewards,
   getSessionReward,
@@ -38,6 +46,7 @@ import {
 export default function SessionSummaryScreen() {
   const database = useSQLiteContext();
   const params = useLocalSearchParams<{
+    celebrate?: string | string[];
     id?: string | string[];
   }>();
   const { i18n, t } = useTranslation();
@@ -51,6 +60,12 @@ export default function SessionSummaryScreen() {
   const sessionId = Array.isArray(params.id)
     ? params.id[0]
     : params.id;
+  const celebrateParam = Array.isArray(
+    params.celebrate,
+  )
+    ? params.celebrate[0]
+    : params.celebrate;
+  const shouldCelebrate = celebrateParam === "1";
   const locale = i18n.resolvedLanguage ?? "en";
 
   useEffect(() => {
@@ -107,6 +122,26 @@ export default function SessionSummaryScreen() {
       mounted = false;
     };
   }, [database, sessionId, t]);
+
+  useEffect(() => {
+    if (
+      !details ||
+      !reward ||
+      isLoading ||
+      !shouldCelebrate
+    ) {
+      return;
+    }
+
+    void triggerSessionCompleteFeedback(
+      reward.newLevel > reward.previousLevel,
+    );
+  }, [
+    details,
+    isLoading,
+    reward,
+    shouldCelebrate,
+  ]);
 
   const dateFormatter = useMemo(
     () =>
@@ -196,7 +231,10 @@ export default function SessionSummaryScreen() {
           </View>
         </View>
 
-        <View style={styles.hero}>
+        <Animated.View
+          entering={FadeInUp.duration(420)}
+          style={styles.hero}
+        >
           <View style={styles.heroTop}>
             <View style={styles.heroIcon}>
               <Ionicons
@@ -244,10 +282,15 @@ export default function SessionSummaryScreen() {
               value={String(details.acceptedPoints)}
             />
           </View>
-        </View>
+        </Animated.View>
+
+        <SessionRoutePreview points={details.points} />
 
         {leveledUp && reward ? (
-          <View style={styles.levelUpCard}>
+          <Animated.View
+            entering={ZoomIn.springify().damping(12)}
+            style={styles.levelUpCard}
+          >
             <View style={styles.levelUpBurst}>
               <Ionicons
                 color={COLORS.white}
@@ -271,10 +314,17 @@ export default function SessionSummaryScreen() {
             <Text style={styles.levelUpNumber}>
               {reward.newLevel}
             </Text>
-          </View>
+          </Animated.View>
         ) : null}
 
-        <RewardCard reward={reward} />
+        <RewardCard
+          animate={shouldCelebrate}
+          reward={reward}
+        />
+        <JourneyStamps
+          details={details}
+          reward={reward}
+        />
 
         {details.status === "interrupted" ? (
           <View style={styles.interruptedCard}>
@@ -381,8 +431,10 @@ export default function SessionSummaryScreen() {
 }
 
 function RewardCard({
+  animate,
   reward,
 }: {
+  animate: boolean;
   reward: SessionRewardRecord | null;
 }) {
   const { t } = useTranslation();
@@ -425,7 +477,14 @@ function RewardCard({
   ].filter((row) => row.xp > 0 || row.coins > 0);
 
   return (
-    <View style={styles.rewardCard}>
+    <Animated.View
+      entering={
+        animate
+          ? FadeInDown.delay(160).duration(420)
+          : undefined
+      }
+      style={styles.rewardCard}
+    >
       <View style={styles.rewardHeader}>
         <View>
           <Text style={styles.rewardEyebrow}>
@@ -436,18 +495,25 @@ function RewardCard({
           </Text>
         </View>
         <View style={styles.rewardTotals}>
-          <Text style={styles.rewardXp}>
-            +{reward.totalXp} XP
-          </Text>
+          <AnimatedCounter
+            animate={animate}
+            prefix="+"
+            style={styles.rewardXp}
+            suffix=" XP"
+            value={reward.totalXp}
+          />
           <View style={styles.rewardCoins}>
             <Ionicons
               color={COLORS.gold}
               name="leaf"
               size={14}
             />
-            <Text style={styles.rewardCoinText}>
-              +{reward.totalCoins}
-            </Text>
+            <AnimatedCounter
+              animate={animate}
+              prefix="+"
+              style={styles.rewardCoinText}
+              value={reward.totalCoins}
+            />
           </View>
         </View>
       </View>
@@ -486,7 +552,124 @@ function RewardCard({
           ))}
         </View>
       )}
-    </View>
+    </Animated.View>
+  );
+}
+
+type JourneyStamp = {
+  copy: string;
+  icon: React.ComponentProps<
+    typeof Ionicons
+  >["name"];
+  key: string;
+  title: string;
+};
+
+function JourneyStamps({
+  details,
+  reward,
+}: {
+  details: ExplorationSessionDetails;
+  reward: SessionRewardRecord | null;
+}) {
+  const { t } = useTranslation();
+  const stamps: JourneyStamp[] = [];
+
+  if (reward?.firstSessionBonus) {
+    stamps.push({
+      copy: t(
+        "feedback.summary.firstJourneyCopy",
+      ),
+      icon: "sunny",
+      key: "first",
+      title: t(
+        "feedback.summary.firstJourney",
+      ),
+    });
+  }
+
+  if (reward?.oneKilometerBonus) {
+    stamps.push({
+      copy: t(
+        "feedback.summary.oneKilometerCopy",
+      ),
+      icon: "trail-sign",
+      key: "kilometer",
+      title: t(
+        "feedback.summary.oneKilometer",
+      ),
+    });
+  }
+
+  if (details.discoveredCells > 0) {
+    stamps.push({
+      copy: t(
+        "feedback.summary.newAreaCopy",
+        {
+          count: details.discoveredCells,
+        },
+      ),
+      icon: "map",
+      key: "area",
+      title: t("feedback.summary.newArea"),
+    });
+  }
+
+  if (details.status === "completed") {
+    stamps.push({
+      copy: t(
+        "feedback.summary.completedCopy",
+      ),
+      icon: "checkmark-circle",
+      key: "completed",
+      title: t(
+        "feedback.summary.completed",
+      ),
+    });
+  }
+
+  if (stamps.length === 0) {
+    return null;
+  }
+
+  return (
+    <Animated.View
+      entering={FadeInDown.delay(260).duration(420)}
+      style={styles.stampCard}
+    >
+      <Text style={styles.stampEyebrow}>
+        {t("feedback.summary.stampsEyebrow")}
+      </Text>
+      <Text style={styles.stampTitle}>
+        {t("feedback.summary.stampsTitle")}
+      </Text>
+
+      <View style={styles.stampGrid}>
+        {stamps.map((stamp, index) => (
+          <Animated.View
+            entering={ZoomIn.delay(320 + index * 90)}
+            key={stamp.key}
+            style={styles.stamp}
+          >
+            <View style={styles.stampSeal}>
+              <Ionicons
+                color={COLORS.white}
+                name={stamp.icon}
+                size={20}
+              />
+            </View>
+            <View style={styles.stampCopy}>
+              <Text style={styles.stampItemTitle}>
+                {stamp.title}
+              </Text>
+              <Text style={styles.stampItemCopy}>
+                {stamp.copy}
+              </Text>
+            </View>
+          </Animated.View>
+        ))}
+      </View>
+    </Animated.View>
   );
 }
 
@@ -807,6 +990,67 @@ const styles = StyleSheet.create({
     fontSize: 10,
     lineHeight: 16,
     marginTop: 13,
+  },
+  stampCard: {
+    backgroundColor: COLORS.white,
+    borderColor: "#E7B9C5",
+    borderRadius: RADII.large,
+    borderWidth: 1,
+    padding: 16,
+  },
+  stampEyebrow: {
+    color: COLORS.vermilion,
+    fontSize: 9,
+    fontWeight: "900",
+    letterSpacing: 1.2,
+  },
+  stampTitle: {
+    color: COLORS.ink,
+    fontSize: 17,
+    fontWeight: "900",
+    marginTop: 3,
+  },
+  stampGrid: {
+    gap: 9,
+    marginTop: 14,
+  },
+  stamp: {
+    alignItems: "center",
+    backgroundColor: COLORS.paper,
+    borderColor: COLORS.line,
+    borderRadius: RADII.medium,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: 10,
+    padding: 11,
+  },
+  stampSeal: {
+    alignItems: "center",
+    backgroundColor: COLORS.vermilion,
+    borderColor: COLORS.white,
+    borderRadius: 18,
+    borderWidth: 2,
+    height: 40,
+    justifyContent: "center",
+    shadowColor: COLORS.shadow,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.12,
+    shadowRadius: 5,
+    width: 40,
+  },
+  stampCopy: {
+    flex: 1,
+  },
+  stampItemTitle: {
+    color: COLORS.ink,
+    fontSize: 12,
+    fontWeight: "900",
+  },
+  stampItemCopy: {
+    color: COLORS.muted,
+    fontSize: 9,
+    lineHeight: 14,
+    marginTop: 2,
   },
   interruptedCard: {
     alignItems: "flex-start",

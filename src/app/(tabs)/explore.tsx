@@ -11,9 +11,15 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useMemo, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useTranslation } from "react-i18next";
 
+import { DiscoveryCelebration } from "@/components/DiscoveryCelebration";
 import { ExplorationMap } from "@/components/ExplorationMap";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { COLORS, RADII, SPACING } from "@/constants/theme";
@@ -28,6 +34,11 @@ export default function ExploreScreen() {
   const { i18n, t } = useTranslation();
   const exploration = useExplorationSession();
   const [recenterToken, setRecenterToken] = useState(0);
+  const [celebration, setCelebration] = useState<{
+    cellId: string;
+    rewarded: boolean;
+  } | null>(null);
+  const lastCelebratedCellRef = useRef<string | null>(null);
 
   const locale = i18n.resolvedLanguage ?? "en";
   const permissionGranted =
@@ -45,6 +56,28 @@ export default function ExploreScreen() {
     [exploration.homeZoneCompletion, locale],
   );
 
+
+  useEffect(() => {
+    const discoveredCell =
+      exploration.lastDiscoveredCell;
+
+    if (
+      !discoveredCell ||
+      discoveredCell === lastCelebratedCellRef.current
+    ) {
+      return;
+    }
+
+    lastCelebratedCellRef.current = discoveredCell;
+    setCelebration({
+      cellId: discoveredCell,
+      rewarded: exploration.isSessionActive,
+    });
+  }, [
+    exploration.isSessionActive,
+    exploration.lastDiscoveredCell,
+  ]);
+
   const handleSessionButton = async () => {
     if (exploration.isSessionActive) {
       const summary = await exploration.stopSession();
@@ -52,7 +85,10 @@ export default function ExploreScreen() {
       if (summary) {
         router.push({
           pathname: "/session-summary",
-          params: { id: summary.id },
+          params: {
+            celebrate: "1",
+            id: summary.id,
+          },
         });
       }
 
@@ -158,6 +194,11 @@ export default function ExploreScreen() {
             homeLocation={exploration.homeLocation}
             recenterToken={recenterToken}
             routePoints={exploration.routePoints}
+          />
+          <DiscoveryCelebration
+            cellId={celebration?.cellId ?? null}
+            onDismiss={() => setCelebration(null)}
+            rewarded={celebration?.rewarded ?? false}
           />
         </View>
 
@@ -410,7 +451,11 @@ export default function ExploreScreen() {
                   {exploration.lastDiscoveredCell}
                 </Text>
               </View>
-              <Text style={styles.reward}>+10 XP</Text>
+              <Text style={styles.reward}>
+                {exploration.isSessionActive
+                  ? "+10 XP · +2"
+                  : t("feedback.discovery.savedLocally")}
+              </Text>
             </View>
           ) : null}
 
