@@ -2,8 +2,7 @@
   "expo": {
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "backgroundImage": "./assets/images/android-icon-background.png",
+        "backgroundColor": "#F7F1E7",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
@@ -25,9 +24,14 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#208AEF",
+          "backgroundColor": "#F7F1E7",
           "image": "./assets/images/splash-icon.png",
-          "imageWidth": 76
+          "imageWidth": 190,
+          "resizeMode": "contain",
+          "dark": {
+            "backgroundColor": "#17231F",
+            "image": "./assets/images/splash-icon-dark.png"
+          }
         }
       ],
       [
@@ -50,16 +54,8 @@
         "expo-localization",
         {
           "supportedLocales": {
-            "android": [
-              "en",
-              "ro",
-              "ja"
-            ],
-            "ios": [
-              "en",
-              "ro",
-              "ja"
-            ]
+            "android": ["en", "ro", "ja"],
+            "ios": ["en", "ro", "ja"]
           }
         }
       ],
