@@ -62,7 +62,8 @@
             ]
           }
         }
-      ]
+      ],
+      "expo-image"
     ],
     "scheme": "arukiyo",
     "slug": "arukiyo",

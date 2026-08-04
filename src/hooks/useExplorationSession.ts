@@ -1,6 +1,10 @@
 import * as Location from "expo-location";
 import { useSQLiteContext } from "expo-sqlite";
 import {
+  AppState,
+  type AppStateStatus,
+} from "react-native";
+import {
   useCallback,
   useEffect,
   useMemo,
@@ -12,8 +16,14 @@ import { useTranslation } from "react-i18next";
 import { H3_RESOLUTION } from "@/constants/exploration";
 import {
   clearExploredCells,
+  completeExplorationSession,
+  createExplorationSession,
+  type ExplorationSessionStatus,
+  type ExplorationSessionSummary,
+  insertExplorationPoint,
   loadExploredCellIds,
   recordExploredCell,
+  updateExplorationSessionProgress,
 } from "@/lib/exploration-db";
 import {
   createCellFeatureCollection,
@@ -23,12 +33,20 @@ import {
 } from "@/lib/exploration-grid";
 import {
   deleteHomeLocation,
-  HomeLocation,
+  type HomeLocation,
   loadHomeLocation,
   saveHomeLocation,
 } from "@/lib/home-location";
+import {
+  evaluateSessionPoint,
+  isAccurateEnoughForDiscovery,
+  locationToSessionPoint,
+  type SessionPoint,
+} from "@/lib/session-tracking";
 
 export type ExplorationSessionState = {
+  acceptedPointCount: number;
+  activeSessionStartedAt: string | null;
   cellFeatures: ReturnType<typeof createCellFeatureCollection>;
   clearExploration: () => Promise<void>;
   currentCell: string | null;
@@ -45,10 +63,15 @@ export type ExplorationSessionState = {
   lastDiscoveredCell: string | null;
   permission: Location.LocationPermissionResponse | null;
   refreshLocation: () => Promise<void>;
+  rejectedPointCount: number;
   removeHome: () => Promise<void>;
+  routePoints: SessionPoint[];
   saveCurrentAsHome: () => Promise<void>;
+  sessionDistanceMeters: number;
+  sessionElapsedSeconds: number;
+  sessionNewCellCount: number;
   startSession: () => Promise<void>;
-  stopSession: () => void;
+  stopSession: () => Promise<ExplorationSessionSummary | null>;
 };
 
 export function useExplorationSession(): ExplorationSessionState {
@@ -70,8 +93,35 @@ export function useExplorationSession(): ExplorationSessionState {
   const [isSessionActive, setIsSessionActive] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [activeSessionStartedAt, setActiveSessionStartedAt] =
+    useState<string | null>(null);
+  const [routePoints, setRoutePoints] =
+    useState<SessionPoint[]>([]);
+  const [sessionDistanceMeters, setSessionDistanceMeters] =
+    useState(0);
+  const [sessionElapsedSeconds, setSessionElapsedSeconds] =
+    useState(0);
+  const [sessionNewCellCount, setSessionNewCellCount] =
+    useState(0);
+  const [acceptedPointCount, setAcceptedPointCount] =
+    useState(0);
+  const [rejectedPointCount, setRejectedPointCount] =
+    useState(0);
+
   const subscriptionRef =
     useRef<Location.LocationSubscription | null>(null);
+  const activeSessionIdRef = useRef<string | null>(null);
+  const activeSessionStartedAtRef = useRef<string | null>(null);
+  const lastAcceptedPointRef = useRef<SessionPoint | null>(null);
+  const routePointsRef = useRef<SessionPoint[]>([]);
+  const sessionDistanceRef = useRef(0);
+  const sessionNewCellsRef = useRef(new Set<string>());
+  const acceptedPointCountRef = useRef(0);
+  const rejectedPointCountRef = useRef(0);
+  const processingQueueRef = useRef<Promise<void>>(
+    Promise.resolve(),
+  );
+  const isFinalizingRef = useRef(false);
 
   useEffect(() => {
     let mounted = true;
@@ -164,16 +214,150 @@ export function useExplorationSession(): ExplorationSessionState {
       ? 0
       : (homeZoneExploredCount / homeZoneTotalCount) * 100;
 
+  const buildLiveSummary = useCallback(
+    (
+      status: ExplorationSessionStatus,
+      endedAt: string | null,
+    ): ExplorationSessionSummary | null => {
+      const id = activeSessionIdRef.current;
+      const startedAt = activeSessionStartedAtRef.current;
+
+      if (!id || !startedAt) {
+        return null;
+      }
+
+      const durationSeconds = Math.max(
+        0,
+        Math.floor(
+          ((endedAt ? Date.parse(endedAt) : Date.now()) -
+            Date.parse(startedAt)) /
+            1_000,
+        ),
+      );
+
+      return {
+        acceptedPoints: acceptedPointCountRef.current,
+        discoveredCells: sessionNewCellsRef.current.size,
+        distanceMeters: sessionDistanceRef.current,
+        durationSeconds,
+        endedAt,
+        id,
+        rejectedPoints: rejectedPointCountRef.current,
+        startedAt,
+        status,
+      };
+    },
+    [],
+  );
+
+  const persistLiveProgress = useCallback(async () => {
+    const summary = buildLiveSummary("active", null);
+
+    if (!summary) {
+      return;
+    }
+
+    await updateExplorationSessionProgress(
+      database,
+      summary,
+    );
+  }, [buildLiveSummary, database]);
+
   const processLocation = useCallback(
     async (location: Location.LocationObject) => {
       setCurrentLocation(location);
 
-      const cellId = locationToCell(
-        location.coords.latitude,
-        location.coords.longitude,
+      const activeSessionId = activeSessionIdRef.current;
+
+      if (!activeSessionId) {
+        if (!isAccurateEnoughForDiscovery(location)) {
+          return;
+        }
+
+        const cellId = locationToCell(
+          location.coords.latitude,
+          location.coords.longitude,
+        );
+
+        try {
+          const isNew = await recordExploredCell(
+            database,
+            cellId,
+            H3_RESOLUTION,
+          );
+
+          if (isNew) {
+            setExploredCellIds((previous) => {
+              const next = new Set(previous);
+              next.add(cellId);
+              return next;
+            });
+            setLastDiscoveredCell(cellId);
+          }
+        } catch {
+          setError(t("explore.errors.saveCell"));
+        }
+
+        return;
+      }
+
+      const candidate = locationToSessionPoint(
+        location,
+        acceptedPointCountRef.current,
+      );
+      const decision = evaluateSessionPoint(
+        lastAcceptedPointRef.current,
+        candidate,
       );
 
+      if (!decision.accepted) {
+        rejectedPointCountRef.current += 1;
+        setRejectedPointCount(
+          rejectedPointCountRef.current,
+        );
+
+        try {
+          await persistLiveProgress();
+        } catch {
+          setError(t("session.errors.savePoint"));
+        }
+
+        return;
+      }
+
+      const acceptedPoint: SessionPoint = {
+        ...candidate,
+        sequence: acceptedPointCountRef.current,
+      };
+
       try {
+        await insertExplorationPoint(
+          database,
+          activeSessionId,
+          acceptedPoint,
+        );
+
+        lastAcceptedPointRef.current = acceptedPoint;
+        routePointsRef.current = [
+          ...routePointsRef.current,
+          acceptedPoint,
+        ];
+        acceptedPointCountRef.current += 1;
+        sessionDistanceRef.current +=
+          decision.segmentDistanceMeters;
+
+        setRoutePoints(routePointsRef.current);
+        setAcceptedPointCount(
+          acceptedPointCountRef.current,
+        );
+        setSessionDistanceMeters(
+          sessionDistanceRef.current,
+        );
+
+        const cellId = locationToCell(
+          acceptedPoint.latitude,
+          acceptedPoint.longitude,
+        );
         const isNew = await recordExploredCell(
           database,
           cellId,
@@ -191,13 +375,34 @@ export function useExplorationSession(): ExplorationSessionState {
         });
 
         if (isNew) {
+          sessionNewCellsRef.current.add(cellId);
+          setSessionNewCellCount(
+            sessionNewCellsRef.current.size,
+          );
           setLastDiscoveredCell(cellId);
         }
+
+        await persistLiveProgress();
       } catch {
-        setError(t("explore.errors.saveCell"));
+        setError(t("session.errors.savePoint"));
       }
     },
-    [database, t],
+    [database, persistLiveProgress, t],
+  );
+
+  const enqueueLocation = useCallback(
+    async (location: Location.LocationObject) => {
+      const nextTask = processingQueueRef.current.then(
+        () => processLocation(location),
+      );
+
+      processingQueueRef.current = nextTask.catch(
+        () => undefined,
+      );
+
+      await nextTask;
+    },
+    [processLocation],
   );
 
   const ensurePermission = useCallback(async () => {
@@ -237,7 +442,7 @@ export function useExplorationSession(): ExplorationSessionState {
         mayShowUserSettingsDialog: true,
       });
 
-      await processLocation(location);
+      await enqueueLocation(location);
     } catch (reason) {
       setError(
         reason instanceof Error
@@ -247,17 +452,73 @@ export function useExplorationSession(): ExplorationSessionState {
     } finally {
       setIsBusy(false);
     }
-  }, [ensurePermission, processLocation, t]);
+  }, [enqueueLocation, ensurePermission, t]);
 
-  const stopSession = useCallback(() => {
-    subscriptionRef.current?.remove();
-    subscriptionRef.current = null;
-    setIsSessionActive(false);
-  }, []);
+  const finalizeSession = useCallback(
+    async (
+      status: Exclude<
+        ExplorationSessionStatus,
+        "active"
+      >,
+    ): Promise<ExplorationSessionSummary | null> => {
+      if (
+        !activeSessionIdRef.current ||
+        isFinalizingRef.current
+      ) {
+        return null;
+      }
+
+      isFinalizingRef.current = true;
+      subscriptionRef.current?.remove();
+      subscriptionRef.current = null;
+      setIsSessionActive(false);
+      setIsBusy(true);
+
+      try {
+        await processingQueueRef.current;
+
+        const endedAt = new Date().toISOString();
+        const summary = buildLiveSummary(
+          status,
+          endedAt,
+        );
+
+        if (!summary) {
+          return null;
+        }
+
+        await completeExplorationSession(
+          database,
+          summary,
+        );
+
+        setSessionElapsedSeconds(
+          summary.durationSeconds,
+        );
+
+        activeSessionIdRef.current = null;
+        activeSessionStartedAtRef.current = null;
+        setActiveSessionStartedAt(null);
+
+        return summary;
+      } catch {
+        setError(t("session.errors.finish"));
+        return null;
+      } finally {
+        isFinalizingRef.current = false;
+        setIsBusy(false);
+      }
+    },
+    [buildLiveSummary, database, t],
+  );
+
+  const stopSession = useCallback(
+    () => finalizeSession("completed"),
+    [finalizeSession],
+  );
 
   const startSession = useCallback(async () => {
-    if (isSessionActive) {
-      stopSession();
+    if (activeSessionIdRef.current) {
       return;
     }
 
@@ -267,43 +528,115 @@ export function useExplorationSession(): ExplorationSessionState {
     try {
       await ensurePermission();
 
+      const startedAt = new Date().toISOString();
+      const sessionId = createSessionId();
+
+      await createExplorationSession(
+        database,
+        sessionId,
+        startedAt,
+      );
+
+      activeSessionIdRef.current = sessionId;
+      activeSessionStartedAtRef.current = startedAt;
+      lastAcceptedPointRef.current = null;
+      routePointsRef.current = [];
+      sessionDistanceRef.current = 0;
+      sessionNewCellsRef.current = new Set();
+      acceptedPointCountRef.current = 0;
+      rejectedPointCountRef.current = 0;
+      processingQueueRef.current = Promise.resolve();
+
+      setActiveSessionStartedAt(startedAt);
+      setRoutePoints([]);
+      setSessionDistanceMeters(0);
+      setSessionElapsedSeconds(0);
+      setSessionNewCellCount(0);
+      setAcceptedPointCount(0);
+      setRejectedPointCount(0);
+      setIsSessionActive(true);
+
       const initialLocation =
         await Location.getCurrentPositionAsync({
           accuracy: Location.Accuracy.High,
           mayShowUserSettingsDialog: true,
         });
 
-      await processLocation(initialLocation);
+      await enqueueLocation(initialLocation);
 
       subscriptionRef.current =
         await Location.watchPositionAsync(
           {
             accuracy: Location.Accuracy.High,
-            distanceInterval: 12,
-            timeInterval: 5_000,
+            distanceInterval: 8,
+            timeInterval: 4_000,
           },
           (location) => {
-            void processLocation(location);
+            void enqueueLocation(location);
           },
         );
-
-      setIsSessionActive(true);
     } catch (reason) {
+      if (activeSessionIdRef.current) {
+        await finalizeSession("interrupted");
+      }
+
       setError(
         reason instanceof Error
           ? reason.message
-          : t("explore.errors.startSession"),
+          : t("session.errors.create"),
       );
     } finally {
       setIsBusy(false);
     }
   }, [
+    database,
+    enqueueLocation,
     ensurePermission,
-    isSessionActive,
-    processLocation,
-    stopSession,
+    finalizeSession,
     t,
   ]);
+
+  useEffect(() => {
+    if (!isSessionActive || !activeSessionStartedAt) {
+      return;
+    }
+
+    const updateElapsed = () => {
+      setSessionElapsedSeconds(
+        Math.max(
+          0,
+          Math.floor(
+            (Date.now() -
+              Date.parse(activeSessionStartedAt)) /
+              1_000,
+          ),
+        ),
+      );
+    };
+
+    updateElapsed();
+    const interval = setInterval(updateElapsed, 1_000);
+
+    return () => clearInterval(interval);
+  }, [activeSessionStartedAt, isSessionActive]);
+
+  useEffect(() => {
+    const handleAppState = (state: AppStateStatus) => {
+      if (
+        state !== "active" &&
+        activeSessionIdRef.current
+      ) {
+        void finalizeSession("interrupted");
+      }
+    };
+
+    const subscription = AppState.addEventListener(
+      "change",
+      handleAppState,
+    );
+
+    return () => subscription.remove();
+  }, [finalizeSession]);
 
   useEffect(
     () => () => {
@@ -368,6 +701,8 @@ export function useExplorationSession(): ExplorationSessionState {
   }, [database, t]);
 
   return {
+    acceptedPointCount,
+    activeSessionStartedAt,
     cellFeatures,
     clearExploration,
     currentCell,
@@ -384,9 +719,22 @@ export function useExplorationSession(): ExplorationSessionState {
     lastDiscoveredCell,
     permission,
     refreshLocation,
+    rejectedPointCount,
     removeHome,
+    routePoints,
     saveCurrentAsHome,
+    sessionDistanceMeters,
+    sessionElapsedSeconds,
+    sessionNewCellCount,
     startSession,
     stopSession,
   };
+}
+
+function createSessionId(): string {
+  return [
+    "session",
+    Date.now().toString(36),
+    Math.random().toString(36).slice(2, 10),
+  ].join("-");
 }

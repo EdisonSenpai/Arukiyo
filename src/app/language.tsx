@@ -18,12 +18,12 @@ import {
   useLanguage,
 } from "@/providers/LanguageProvider";
 
-const OPTIONS: Array<{
+const OPTIONS: {
   mode: LanguageMode;
   icon: React.ComponentProps<typeof Ionicons>["name"];
   titleKey: string;
   descriptionKey: string;
-}> = [
+}[] = [
   {
     mode: "en",
     icon: "globe-outline",

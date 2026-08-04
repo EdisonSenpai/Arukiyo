@@ -8,7 +8,7 @@
 
 A Japanese-inspired mobile exploration game that turns real-world movement into progress, discovery, collections, and adventure.
 
-[![Development Stage](https://img.shields.io/badge/stage-2C%20completed-D85B4B?style=for-the-badge)](#development-progress)
+[![Development Stage](https://img.shields.io/badge/stage-3A%20completed-D85B4B?style=for-the-badge)](#development-progress)
 [![Platform](https://img.shields.io/badge/platform-Android-3DDC84?style=for-the-badge&logo=android&logoColor=white)](#technology)
 [![Expo](https://img.shields.io/badge/Expo-SDK%2057-000020?style=for-the-badge&logo=expo&logoColor=white)](#technology)
 [![React Native](https://img.shields.io/badge/React%20Native-0.86-61DAFB?style=for-the-badge&logo=react&logoColor=black)](#technology)
@@ -39,13 +39,18 @@ The current Android development build already includes:
 - a real interactive MapLibre map;
 - H3-based geographic exploration cells;
 - persistent discovered cells stored in SQLite;
-- a first functional fog-of-war system;
+- a functional fog-of-war system;
 - live foreground exploration sessions;
+- a real route line drawn from accepted GPS points;
+- live distance, duration, GPS-point, and new-cell counters;
+- GPS quality filtering for inaccurate, duplicated, stale, and implausible points;
+- persistent session summaries and route-point storage in SQLite;
+- a local exploration-session history;
+- completed and interrupted-session handling;
 - current-location and Home map markers;
 - local completion statistics and exploration reset tools;
 - English-first localization with Romanian, Japanese, and device-language modes;
 - dedicated Settings and Language screens;
-- a visible Home icon and clearer roads beneath the fog-of-war layer;
 - wireless Android development and physical-device testing.
 
 ## Core product vision
@@ -70,13 +75,15 @@ Arukiyo is planned as a progressive real-world exploration RPG with:
 ## Development progress
 
 | Stage | Status | Scope |
-|---|---:|---|
+| --- | ---: | --- |
 | Stage 0 | ✅ Complete | Windows environment, Expo project, Android SDK, JDK 17, physical-device build |
 | Stage 1A | ✅ Complete | Arukiyo visual identity, tabs, Home, Quests, Journal, Profile, and Shop prototypes |
 | Stage 2A | ✅ Complete | Foreground GPS, encrypted Home location, permission handling, location accuracy |
 | Stage 2B | ✅ Complete | MapLibre map, H3 cells, SQLite persistence, live exploration, fog of war |
 | Stage 2C | ✅ Complete | English-first localization, Romanian and Japanese, map polish, real Home icon |
-| Stage 3 | ⏭ Next | Route distance, session history, XP, rewards, and discovery animations |
+| Stage 3A | ✅ Complete | Persistent sessions, live route, distance, duration, GPS filtering, summaries, and history |
+| Stage 3B | ⏭ Next | XP, levels, coins, reward rules, daily bonuses, and real Home dashboard statistics |
+| Stage 3C | Planned | Discovery animations, haptics, animated rewards, and richer journey summaries |
 | Stage 4 | Planned | Landmark discovery, collections, badges, historical information |
 | Stage 5 | Planned | Accounts, synchronization, FastAPI backend, PostgreSQL and PostGIS |
 
@@ -84,17 +91,31 @@ Arukiyo is planned as a progressive real-world exploration RPG with:
 
 ## Map and exploration model
 
-Arukiyo currently converts GPS coordinates into H3 hexagonal cells. Entering a cell records it locally as discovered.
+Arukiyo converts GPS coordinates into H3 hexagonal cells. Entering a sufficiently accurate cell records it locally as discovered. During an active session, accepted GPS points also form a persistent real-world route.
 
 | Map state | Meaning |
-|---|---|
+| --- | --- |
 | Dark hexagon | Undiscovered fog-of-war cell |
 | Pink hexagon | Previously discovered cell |
 | Gold hexagon | Current cell |
 | Green marker | Current GPS position |
 | Red marker | Private Home location |
+| Red route line | Accepted movement during the current session |
 
-Exploration data is persisted locally in SQLite. The exact Home coordinate is stored separately through Expo Secure Store and is not uploaded to a server in the current implementation.
+Exploration cells, sessions, session statistics, and accepted route points are persisted locally in SQLite. The exact Home coordinate is stored separately through Expo Secure Store and is not uploaded to a server in the current implementation.
+
+## Session tracking and GPS validation
+
+Stage 3A records foreground exploration sessions while the application is open. Each accepted point stores its coordinates, timestamp, accuracy, altitude, speed, heading, and route sequence.
+
+A point can be filtered when:
+
+- reported accuracy is worse than the configured threshold;
+- it is too close to the previous accepted point;
+- its timestamp is stale or invalid;
+- the implied movement speed is implausible for walking exploration.
+
+Filtered points do not increase route distance or create false route segments. If foreground tracking is interrupted, the active session is finalized and preserved as an interrupted journey instead of being silently lost.
 
 ## Languages
 
@@ -110,7 +131,7 @@ The selected language is stored locally and restored when the application is reo
 ## Technology
 
 | Area | Technology |
-|---|---|
+| --- | --- |
 | Mobile application | React Native 0.86 + TypeScript |
 | Development platform | Expo SDK 57 + Expo Router |
 | Android build | Android SDK 36, Gradle, JDK 17 |
@@ -119,6 +140,7 @@ The selected language is stored locally and restored when the application is reo
 | Local structured storage | Expo SQLite |
 | Sensitive local storage | Expo Secure Store |
 | Foreground location | Expo Location |
+| Localization | i18next + react-i18next + Expo Localization |
 | Planned backend | FastAPI |
 | Planned database | PostgreSQL + PostGIS |
 | Planned caching/tasks | Redis |
@@ -127,14 +149,17 @@ The selected language is stored locally and restored when the application is reo
 
 ```mermaid
 flowchart TD
-    UI[React Native UI\nExpo Router] --> EXP[Exploration Session]
+    UI[React Native UI\nExpo Router] --> EXP[Exploration Session Engine]
     EXP --> GPS[Expo Location]
-    EXP --> GRID[H3 Geographic Grid]
-    EXP --> MAP[MapLibre Map]
-    GRID --> DB[(Expo SQLite)]
+    EXP --> FILTER[GPS Accuracy and Movement Filter]
+    FILTER --> ROUTE[Live MapLibre Route]
+    FILTER --> GRID[H3 Geographic Grid]
+    GRID --> CELLS[(Explored Cells\nExpo SQLite)]
+    EXP --> SESSIONS[(Sessions and Route Points\nExpo SQLite)]
     GPS --> HOME[Private Home Location]
     HOME --> SECURE[Expo Secure Store]
-    DB -. future sync .-> API[FastAPI Backend]
+    CELLS -. future sync .-> API[FastAPI Backend]
+    SESSIONS -. future sync .-> API
     API -. future .-> POSTGIS[(PostgreSQL + PostGIS)]
 ```
 
@@ -143,18 +168,21 @@ flowchart TD
 ```text
 Arukiyo/
 ├── assets/                  App icons, splash assets, and images
-├── scripts/                 Build helpers and compatibility patches
+├── scripts/                 Required build helpers and compatibility patches
 ├── src/
-│   ├── app/                 Expo Router screens and layouts
-│   ├── components/          Reusable interface and map components
+│   ├── app/                 Expo Router screens, session history, and summaries
+│   ├── components/          Reusable interface and MapLibre components
 │   ├── constants/           Theme and exploration configuration
-│   ├── hooks/               Exploration and location state
-│   └── lib/                 H3, SQLite, and secure-storage utilities
-├── android/                 Generated native Android project
+│   ├── hooks/               Exploration and live-session state
+│   ├── i18n/                English, Romanian, and Japanese resources
+│   ├── lib/                 H3, SQLite, GPS filtering, and secure-storage utilities
+│   └── providers/           Application-level language state
 ├── app.json                 Expo application configuration
 ├── package.json             Dependencies and project commands
 └── README.md
 ```
+
+The native `android/` and `ios/` directories are generated locally through Expo Prebuild and are intentionally excluded from Git.
 
 ## Development setup
 
@@ -196,34 +224,34 @@ npx expo run:android --device
 After the native development build is installed:
 
 ```powershell
-npx expo start --dev-client --lan
+npm run dev
 ```
 
 Routine TypeScript and interface changes do not require rebuilding the APK. A new native build is required after adding or changing native modules.
 
-## Current validation flow
+## Stage 3A validation flow
 
-1. Confirm that the app starts in English by default.
-2. Open **Profile -> Settings -> Language**.
-3. Test English, Romanian, Japanese, and device-language mode.
-4. Close and reopen the app and confirm that the language persists.
-5. Open **Explore**.
-6. Grant precise foreground location permission.
-7. Press **Start exploring**.
-8. Confirm that the GPS marker, current hexagon, and Home marker appear.
-9. Configure the private Home location if it is not configured.
-10. Walk into another H3 cell with the application open.
-11. Confirm that visited cells remain discovered after restarting the app.
-12. Use **Reset fog** only when testing local progression from zero.
+1. Confirm that the application starts and the stored language is restored.
+2. Open **Explore** and start a foreground exploration session.
+3. Confirm that the live-session card shows distance, duration, accepted GPS points, filtered points, and newly discovered cells.
+4. Walk through a real outdoor route and confirm that the red route line follows accepted movement.
+5. Confirm that standing still does not continuously increase distance.
+6. Stop the session and confirm that the summary screen opens automatically.
+7. Open **Session history** and confirm that the completed session is present.
+8. Close and reopen Arukiyo and confirm that session history persists.
+9. Start another session, send the application to the background, and confirm that it is preserved as interrupted.
+10. Re-test the full flow in English, Romanian, and Japanese.
 
 ## Screenshots
 
-Clean in-app screenshots will be added after the Stage 3 route, distance, and reward pass, when the primary exploration interface is stable.
+Clean in-app screenshots will be added after Stage 3C, when the route, rewards, and discovery-feedback interface is stable enough to represent the project accurately.
 
 Planned gallery:
 
 - Home dashboard;
-- MapLibre exploration and fog of war;
+- MapLibre fog of war and live route;
+- completed-session summary;
+- local journey history;
 - quests and streaks;
 - Japanese travel journal;
 - profile badges and collections;
@@ -237,6 +265,7 @@ Arukiyo is designed around privacy-aware location handling:
 - exact Home coordinates are stored locally in encrypted storage;
 - public interfaces will use an approximate Home area;
 - location tracking is currently foreground-only;
+- sessions are finalized if foreground tracking is interrupted;
 - users will receive explicit controls before background tracking is introduced;
 - live location sharing will never be enabled by default;
 - private property, unsafe areas, and inaccessible locations must not become mandatory objectives;
@@ -246,6 +275,7 @@ Arukiyo is designed around privacy-aware location handling:
 
 - The current MapLibre style uses development/demo tiles and will be replaced before release.
 - Foreground exploration works; background exploration is intentionally disabled.
+- GPS thresholds are initial development values and will be tuned through additional outdoor testing.
 - `h3-js` currently needs a small Hermes compatibility patch, applied automatically after `npm install`.
 - Gradle is pinned to Java 17 through the project helper script.
 - Do not run `npm audit fix --force` without reviewing Expo and React Native compatibility.

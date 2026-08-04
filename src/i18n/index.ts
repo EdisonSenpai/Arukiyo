@@ -4,6 +4,11 @@ import { initReactI18next } from "react-i18next";
 import { en } from "@/i18n/locales/en";
 import { ja } from "@/i18n/locales/ja";
 import { ro } from "@/i18n/locales/ro";
+import {
+  sessionEn,
+  sessionJa,
+  sessionRo,
+} from "@/i18n/locales/session";
 
 export const SUPPORTED_LANGUAGES = ["en", "ro", "ja"] as const;
 export type SupportedLanguage =
@@ -22,9 +27,24 @@ void i18n.use(initReactI18next).init({
     useSuspense: false,
   },
   resources: {
-    en: { translation: en },
-    ja: { translation: ja },
-    ro: { translation: ro },
+    en: {
+      translation: {
+        ...en,
+        session: sessionEn,
+      },
+    },
+    ja: {
+      translation: {
+        ...ja,
+        session: sessionJa,
+      },
+    },
+    ro: {
+      translation: {
+        ...ro,
+        session: sessionRo,
+      },
+    },
   },
   supportedLngs: [...SUPPORTED_LANGUAGES],
 });
