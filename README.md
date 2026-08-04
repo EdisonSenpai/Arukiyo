@@ -8,7 +8,7 @@
 
 A Japanese-inspired mobile exploration game that turns real-world movement into progress, discovery, collections, and adventure.
 
-[![Development Stage](https://img.shields.io/badge/stage-3A%20completed-D85B4B?style=for-the-badge)](#development-progress)
+[![Development Stage](https://img.shields.io/badge/stage-3B%20completed-D85B4B?style=for-the-badge)](#development-progress)
 [![Platform](https://img.shields.io/badge/platform-Android-3DDC84?style=for-the-badge&logo=android&logoColor=white)](#technology)
 [![Expo](https://img.shields.io/badge/Expo-SDK%2057-000020?style=for-the-badge&logo=expo&logoColor=white)](#technology)
 [![React Native](https://img.shields.io/badge/React%20Native-0.86-61DAFB?style=for-the-badge&logo=react&logoColor=black)](#technology)
@@ -47,8 +47,13 @@ The current Android development build already includes:
 - persistent session summaries and route-point storage in SQLite;
 - a local exploration-session history;
 - completed and interrupted-session handling;
-- current-location and Home map markers;
-- local completion statistics and exploration reset tools;
+- real XP and coin rewards calculated from exploration;
+- persistent levels and explorer ranks;
+- first-journey and one-kilometre daily bonuses;
+- duplicate-reward prevention for reopened sessions;
+- retroactive rewards for eligible Stage 3A sessions;
+- real progression statistics on Home and Profile;
+- a Shop wallet connected to earned exploration coins;
 - English-first localization with Romanian, Japanese, and device-language modes;
 - dedicated Settings and Language screens;
 - wireless Android development and physical-device testing.
@@ -82,8 +87,8 @@ Arukiyo is planned as a progressive real-world exploration RPG with:
 | Stage 2B | ✅ Complete | MapLibre map, H3 cells, SQLite persistence, live exploration, fog of war |
 | Stage 2C | ✅ Complete | English-first localization, Romanian and Japanese, map polish, real Home icon |
 | Stage 3A | ✅ Complete | Persistent sessions, live route, distance, duration, GPS filtering, summaries, and history |
-| Stage 3B | ⏭ Next | XP, levels, coins, reward rules, daily bonuses, and real Home dashboard statistics |
-| Stage 3C | Planned | Discovery animations, haptics, animated rewards, and richer journey summaries |
+| Stage 3B | ✅ Complete | XP, levels, coins, reward rules, daily bonuses, real dashboard statistics, and wallet |
+| Stage 3C | ⏭ Next | Discovery animations, haptics, animated rewards, and richer journey summaries |
 | Stage 4 | Planned | Landmark discovery, collections, badges, historical information |
 | Stage 5 | Planned | Accounts, synchronization, FastAPI backend, PostgreSQL and PostGIS |
 
@@ -102,7 +107,7 @@ Arukiyo converts GPS coordinates into H3 hexagonal cells. Entering a sufficientl
 | Red marker | Private Home location |
 | Red route line | Accepted movement during the current session |
 
-Exploration cells, sessions, session statistics, and accepted route points are persisted locally in SQLite. The exact Home coordinate is stored separately through Expo Secure Store and is not uploaded to a server in the current implementation.
+Exploration cells, sessions, session statistics, accepted route points, reward events, and player progression are persisted locally in SQLite. The exact Home coordinate is stored separately through Expo Secure Store and is not uploaded to a server in the current implementation.
 
 ## Session tracking and GPS validation
 
@@ -116,6 +121,43 @@ A point can be filtered when:
 - the implied movement speed is implausible for walking exploration.
 
 Filtered points do not increase route distance or create false route segments. If foreground tracking is interrupted, the active session is finalized and preserved as an interrupted journey instead of being silently lost.
+
+## Progression and reward model
+
+Stage 3B connects completed exploration data to a persistent local progression system.
+
+### XP and coins
+
+| Activity | XP | Coins |
+| --- | ---: | ---: |
+| Every validated 50 m | 1 | — |
+| Every validated 250 m | — | 1 |
+| Every newly discovered H3 cell | 10 | 2 |
+| Meaningful completed session | 5 | 1 |
+| First meaningful completed session of the day | 25 | 5 |
+| First completed session of at least 1 km that day | 50 | 10 |
+
+A meaningful completed session contains at least 50 metres of validated movement or at least one newly discovered cell.
+
+Interrupted sessions still receive distance and discovery rewards, but do not receive completion or daily-completion bonuses.
+
+### Duplicate protection
+
+Every rewarded session receives one unique reward event. Reopening a summary from History does not grant XP or coins again. Daily bonus indexes also prevent the first-session and one-kilometre bonuses from being claimed more than once per local day.
+
+### Levels and ranks
+
+Level 1 requires 100 XP to advance. The XP required for each later level increases by 75.
+
+| Levels | Explorer rank |
+| --- | --- |
+| 1–4 | Wanderer |
+| 5–9 | Pathfinder |
+| 10–19 | Trailblazer |
+| 20–34 | Voyager |
+| 35+ | World Walker |
+
+Rank names are localized in English, Romanian, and Japanese.
 
 ## Languages
 
@@ -156,10 +198,15 @@ flowchart TD
     FILTER --> GRID[H3 Geographic Grid]
     GRID --> CELLS[(Explored Cells\nExpo SQLite)]
     EXP --> SESSIONS[(Sessions and Route Points\nExpo SQLite)]
+    SESSIONS --> REWARDS[Reward Calculation]
+    REWARDS --> EVENTS[(Reward Events\nExpo SQLite)]
+    EVENTS --> PLAYER[(Player Progress\nXP, Coins, Level)]
+    PLAYER --> DASH[Home, Profile, Shop Wallet]
     GPS --> HOME[Private Home Location]
     HOME --> SECURE[Expo Secure Store]
     CELLS -. future sync .-> API[FastAPI Backend]
     SESSIONS -. future sync .-> API
+    EVENTS -. future sync .-> API
     API -. future .-> POSTGIS[(PostgreSQL + PostGIS)]
 ```
 
@@ -170,12 +217,12 @@ Arukiyo/
 ├── assets/                  App icons, splash assets, and images
 ├── scripts/                 Required build helpers and compatibility patches
 ├── src/
-│   ├── app/                 Expo Router screens, session history, and summaries
+│   ├── app/                 Expo Router screens, dashboards, history, and summaries
 │   ├── components/          Reusable interface and MapLibre components
-│   ├── constants/           Theme and exploration configuration
-│   ├── hooks/               Exploration and live-session state
+│   ├── constants/           Theme, exploration, and progression configuration
+│   ├── hooks/               Exploration, session, and player-progression state
 │   ├── i18n/                English, Romanian, and Japanese resources
-│   ├── lib/                 H3, SQLite, GPS filtering, and secure-storage utilities
+│   ├── lib/                 H3, SQLite, GPS filtering, rewards, and secure storage
 │   └── providers/           Application-level language state
 ├── app.json                 Expo application configuration
 ├── package.json             Dependencies and project commands
@@ -229,33 +276,36 @@ npm run dev
 
 Routine TypeScript and interface changes do not require rebuilding the APK. A new native build is required after adding or changing native modules.
 
-## Stage 3A validation flow
+## Stage 3B validation flow
 
-1. Confirm that the application starts and the stored language is restored.
-2. Open **Explore** and start a foreground exploration session.
-3. Confirm that the live-session card shows distance, duration, accepted GPS points, filtered points, and newly discovered cells.
-4. Walk through a real outdoor route and confirm that the red route line follows accepted movement.
-5. Confirm that standing still does not continuously increase distance.
-6. Stop the session and confirm that the summary screen opens automatically.
-7. Open **Session history** and confirm that the completed session is present.
-8. Close and reopen Arukiyo and confirm that session history persists.
-9. Start another session, send the application to the background, and confirm that it is preserved as interrupted.
-10. Re-test the full flow in English, Romanian, and Japanese.
+1. Confirm that the application starts and migrates the local progression tables without deleting Stage 3A history.
+2. Confirm that Home displays real level, rank, XP, coins, distance, discovered cells, and session totals.
+3. Complete a meaningful exploration session and confirm that the summary displays a reward breakdown.
+4. Confirm that XP and coins increase on Home, Profile, and Shop after returning from the summary.
+5. Reopen the same summary from Session History and confirm that no reward is granted twice.
+6. Confirm that the first meaningful completed session of the day grants its daily bonus once.
+7. Confirm that the first completed session of at least 1 km grants its bonus once.
+8. Confirm that interrupted sessions receive only distance and discovery rewards.
+9. Confirm that Level Up appears when total XP crosses a level threshold.
+10. Confirm that Stage 3A sessions without reward events are reconciled once and then remain stable.
+11. Re-test Home, Profile, Shop, and Session Summary in English, Romanian, and Japanese.
+12. Restart Arukiyo and confirm that XP, coins, levels, daily progress, and rewards persist.
 
 ## Screenshots
 
-Clean in-app screenshots will be added after Stage 3C, when the route, rewards, and discovery-feedback interface is stable enough to represent the project accurately.
+Clean in-app screenshots will be added after Stage 3C, when route, progression, rewards, and discovery feedback are stable enough to represent the project accurately.
 
 Planned gallery:
 
-- Home dashboard;
+- real Home progression dashboard;
 - MapLibre fog of war and live route;
-- completed-session summary;
+- completed-session reward summary;
+- Level Up state;
 - local journey history;
+- Profile progression and rank;
+- Shop wallet;
 - quests and streaks;
-- Japanese travel journal;
-- profile badges and collections;
-- cosmetic shop.
+- Japanese travel journal.
 
 ## Privacy and safety principles
 
@@ -275,7 +325,8 @@ Arukiyo is designed around privacy-aware location handling:
 
 - The current MapLibre style uses development/demo tiles and will be replaced before release.
 - Foreground exploration works; background exploration is intentionally disabled.
-- GPS thresholds are initial development values and will be tuned through additional outdoor testing.
+- GPS and reward thresholds are initial development values and will be tuned through additional outdoor testing.
+- Shop prices and wallet visibility are connected, but purchases and inventory are not implemented yet.
 - `h3-js` currently needs a small Hermes compatibility patch, applied automatically after `npm install`.
 - Gradle is pinned to Java 17 through the project helper script.
 - Do not run `npm audit fix --force` without reviewing Expo and React Native compatibility.

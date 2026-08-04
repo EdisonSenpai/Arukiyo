@@ -13,7 +13,11 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useEffect, useMemo, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { useTranslation } from "react-i18next";
 
 import { COLORS, RADII, SPACING } from "@/constants/theme";
@@ -21,6 +25,11 @@ import {
   type ExplorationSessionDetails,
   getExplorationSessionDetails,
 } from "@/lib/exploration-db";
+import {
+  awardSessionRewards,
+  getSessionReward,
+  type SessionRewardRecord,
+} from "@/lib/progression-db";
 import {
   formatDistance,
   formatDuration,
@@ -34,6 +43,8 @@ export default function SessionSummaryScreen() {
   const { i18n, t } = useTranslation();
   const [details, setDetails] =
     useState<ExplorationSessionDetails | null>(null);
+  const [reward, setReward] =
+    useState<SessionRewardRecord | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -63,8 +74,21 @@ export default function SessionSummaryScreen() {
           throw new Error("Session not found");
         }
 
+        let rewardValue = await getSessionReward(
+          database,
+          sessionId,
+        );
+
+        if (!rewardValue) {
+          rewardValue = await awardSessionRewards(
+            database,
+            value,
+          );
+        }
+
         if (mounted) {
           setDetails(value);
+          setReward(rewardValue);
         }
       } catch {
         if (mounted) {
@@ -133,6 +157,9 @@ export default function SessionSummaryScreen() {
   const startedAt = dateFormatter.format(
     new Date(details.startedAt),
   );
+  const leveledUp =
+    reward !== null &&
+    reward.newLevel > reward.previousLevel;
 
   return (
     <SafeAreaView
@@ -218,6 +245,36 @@ export default function SessionSummaryScreen() {
             />
           </View>
         </View>
+
+        {leveledUp && reward ? (
+          <View style={styles.levelUpCard}>
+            <View style={styles.levelUpBurst}>
+              <Ionicons
+                color={COLORS.white}
+                name="sparkles"
+                size={29}
+              />
+            </View>
+            <View style={styles.levelUpCopy}>
+              <Text style={styles.levelUpTitle}>
+                {t("progression.rewards.levelUp")}
+              </Text>
+              <Text style={styles.levelUpText}>
+                {t("progression.rewards.levelUpCopy", {
+                  level: reward.newLevel,
+                  rank: t(
+                    `progression.ranks.${reward.newRankKey}`,
+                  ),
+                })}
+              </Text>
+            </View>
+            <Text style={styles.levelUpNumber}>
+              {reward.newLevel}
+            </Text>
+          </View>
+        ) : null}
+
+        <RewardCard reward={reward} />
 
         {details.status === "interrupted" ? (
           <View style={styles.interruptedCard}>
@@ -320,6 +377,116 @@ export default function SessionSummaryScreen() {
         </View>
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+function RewardCard({
+  reward,
+}: {
+  reward: SessionRewardRecord | null;
+}) {
+  const { t } = useTranslation();
+
+  if (!reward) {
+    return null;
+  }
+
+  const rows = [
+    {
+      key: "distance",
+      label: t("progression.rewards.distance"),
+      xp: reward.distanceXp,
+      coins: reward.distanceCoins,
+    },
+    {
+      key: "discovery",
+      label: t("progression.rewards.discovery"),
+      xp: reward.discoveryXp,
+      coins: reward.discoveryCoins,
+    },
+    {
+      key: "completion",
+      label: t("progression.rewards.completion"),
+      xp: reward.completionXp,
+      coins: reward.completionCoins,
+    },
+    {
+      key: "first",
+      label: t("progression.rewards.firstSession"),
+      xp: reward.firstSessionXp,
+      coins: reward.firstSessionCoins,
+    },
+    {
+      key: "kilometer",
+      label: t("progression.rewards.oneKilometer"),
+      xp: reward.oneKilometerXp,
+      coins: reward.oneKilometerCoins,
+    },
+  ].filter((row) => row.xp > 0 || row.coins > 0);
+
+  return (
+    <View style={styles.rewardCard}>
+      <View style={styles.rewardHeader}>
+        <View>
+          <Text style={styles.rewardEyebrow}>
+            {t("progression.rewards.eyebrow")}
+          </Text>
+          <Text style={styles.rewardTitle}>
+            {t("progression.rewards.title")}
+          </Text>
+        </View>
+        <View style={styles.rewardTotals}>
+          <Text style={styles.rewardXp}>
+            +{reward.totalXp} XP
+          </Text>
+          <View style={styles.rewardCoins}>
+            <Ionicons
+              color={COLORS.gold}
+              name="leaf"
+              size={14}
+            />
+            <Text style={styles.rewardCoinText}>
+              +{reward.totalCoins}
+            </Text>
+          </View>
+        </View>
+      </View>
+
+      {rows.length === 0 ? (
+        <Text style={styles.noRewardText}>
+          {t("progression.rewards.noReward")}
+        </Text>
+      ) : (
+        <View style={styles.rewardRows}>
+          {rows.map((row) => (
+            <View key={row.key} style={styles.rewardRow}>
+              <Text style={styles.rewardRowLabel}>
+                {row.label}
+              </Text>
+              <View style={styles.rewardRowValues}>
+                {row.xp > 0 ? (
+                  <Text style={styles.rewardRowXp}>
+                    +{row.xp} XP
+                  </Text>
+                ) : null}
+                {row.coins > 0 ? (
+                  <View style={styles.rewardRowCoins}>
+                    <Ionicons
+                      color={COLORS.gold}
+                      name="leaf"
+                      size={11}
+                    />
+                    <Text style={styles.rewardRowCoinText}>
+                      +{row.coins}
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
+            </View>
+          ))}
+        </View>
+      )}
+    </View>
   );
 }
 
@@ -517,6 +684,129 @@ const styles = StyleSheet.create({
     color: "rgba(255,255,255,0.52)",
     fontSize: 9,
     marginTop: 4,
+  },
+  levelUpCard: {
+    alignItems: "center",
+    backgroundColor: COLORS.vermilion,
+    borderRadius: RADII.large,
+    flexDirection: "row",
+    gap: 12,
+    overflow: "hidden",
+    padding: 16,
+  },
+  levelUpBurst: {
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.16)",
+    borderRadius: 21,
+    height: 48,
+    justifyContent: "center",
+    width: 48,
+  },
+  levelUpCopy: {
+    flex: 1,
+  },
+  levelUpTitle: {
+    color: COLORS.white,
+    fontSize: 17,
+    fontWeight: "900",
+  },
+  levelUpText: {
+    color: "rgba(255,255,255,0.75)",
+    fontSize: 10,
+    lineHeight: 15,
+    marginTop: 3,
+  },
+  levelUpNumber: {
+    color: "rgba(255,255,255,0.22)",
+    fontSize: 52,
+    fontWeight: "900",
+  },
+  rewardCard: {
+    backgroundColor: COLORS.white,
+    borderColor: "#DECDAF",
+    borderRadius: RADII.large,
+    borderWidth: 1,
+    padding: 16,
+  },
+  rewardHeader: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  rewardEyebrow: {
+    color: COLORS.gold,
+    fontSize: 9,
+    fontWeight: "900",
+    letterSpacing: 1.2,
+  },
+  rewardTitle: {
+    color: COLORS.ink,
+    fontSize: 17,
+    fontWeight: "900",
+    marginTop: 3,
+  },
+  rewardTotals: {
+    alignItems: "flex-end",
+  },
+  rewardXp: {
+    color: COLORS.vermilion,
+    fontSize: 16,
+    fontWeight: "900",
+  },
+  rewardCoins: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 4,
+    marginTop: 3,
+  },
+  rewardCoinText: {
+    color: COLORS.ink,
+    fontSize: 12,
+    fontWeight: "900",
+  },
+  rewardRows: {
+    borderTopColor: COLORS.line,
+    borderTopWidth: 1,
+    gap: 10,
+    marginTop: 14,
+    paddingTop: 13,
+  },
+  rewardRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  rewardRowLabel: {
+    color: COLORS.inkSoft,
+    flex: 1,
+    fontSize: 10,
+    fontWeight: "800",
+  },
+  rewardRowValues: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 8,
+  },
+  rewardRowXp: {
+    color: COLORS.vermilion,
+    fontSize: 10,
+    fontWeight: "900",
+  },
+  rewardRowCoins: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 3,
+  },
+  rewardRowCoinText: {
+    color: COLORS.ink,
+    fontSize: 10,
+    fontWeight: "900",
+  },
+  noRewardText: {
+    color: COLORS.muted,
+    fontSize: 10,
+    lineHeight: 16,
+    marginTop: 13,
   },
   interruptedCard: {
     alignItems: "flex-start",
