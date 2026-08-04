@@ -25,6 +25,8 @@ export default function RootLayout() {
           <Stack.Screen name="shop" />
           <Stack.Screen name="settings" />
           <Stack.Screen name="language" />
+          <Stack.Screen name="session-summary" />
+          <Stack.Screen name="session-history" />
         </Stack>
       </LanguageProvider>
     </SQLiteProvider>

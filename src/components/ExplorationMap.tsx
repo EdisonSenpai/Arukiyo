@@ -28,17 +28,22 @@ import {
 } from "@/constants/exploration";
 import { COLORS, RADII } from "@/constants/theme";
 import {
-  CellFeatureCollection,
+  type CellFeatureCollection,
   createPointFeatureCollection,
-  LngLat,
+  type LngLat,
 } from "@/lib/exploration-grid";
 import type { HomeLocation } from "@/lib/home-location";
+import {
+  createRouteFeatureCollection,
+  type SessionPoint,
+} from "@/lib/session-tracking";
 
 type ExplorationMapProps = {
   cellFeatures: CellFeatureCollection;
   currentLocation: Location.LocationObject | null;
   homeLocation: HomeLocation | null;
   recenterToken: number;
+  routePoints: SessionPoint[];
 };
 
 export function ExplorationMap({
@@ -46,6 +51,7 @@ export function ExplorationMap({
   currentLocation,
   homeLocation,
   recenterToken,
+  routePoints,
 }: ExplorationMapProps) {
   const { t } = useTranslation();
   const cameraRef = useRef<any>(null);
@@ -80,6 +86,11 @@ export function ExplorationMap({
           )
         : null,
     [currentLocation],
+  );
+
+  const routeFeatures = useMemo(
+    () => createRouteFeatureCollection(routePoints),
+    [routePoints],
   );
 
   useEffect(() => {
@@ -190,6 +201,48 @@ export function ExplorationMap({
           </GeoJSONSource>
         ) : null}
 
+        {routeFeatures.features.length > 0 ? (
+          <GeoJSONSource
+            data={routeFeatures as never}
+            id="arukiyo-session-route"
+          >
+            <Layer
+              id="arukiyo-session-route-shadow"
+              layout={
+                {
+                  "line-cap": "round",
+                  "line-join": "round",
+                } as never
+              }
+              paint={
+                {
+                  "line-color": "rgba(23,35,31,0.36)",
+                  "line-width": 8,
+                } as never
+              }
+              source="arukiyo-session-route"
+              type="line"
+            />
+            <Layer
+              id="arukiyo-session-route-line"
+              layout={
+                {
+                  "line-cap": "round",
+                  "line-join": "round",
+                } as never
+              }
+              paint={
+                {
+                  "line-color": COLORS.vermilion,
+                  "line-width": 5,
+                } as never
+              }
+              source="arukiyo-session-route"
+              type="line"
+            />
+          </GeoJSONSource>
+        ) : null}
+
         {homeLocation ? (
           <Marker
             anchor="bottom"
@@ -278,8 +331,20 @@ export function ExplorationMap({
 
       <View style={styles.legend}>
         <LegendDot color={COLORS.ink} label={t("map.fog")} />
-        <LegendDot color={COLORS.sakura} label={t("map.discovered")} />
-        <LegendDot color={COLORS.gold} label={t("map.current")} />
+        <LegendDot
+          color={COLORS.sakura}
+          label={t("map.discovered")}
+        />
+        <LegendDot
+          color={COLORS.gold}
+          label={t("map.current")}
+        />
+        {routePoints.length > 1 ? (
+          <LegendDot
+            color={COLORS.vermilion}
+            label={t("session.route")}
+          />
+        ) : null}
       </View>
 
       <Pressable
@@ -362,8 +427,10 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.94)",
     borderRadius: RADII.pill,
     flexDirection: "row",
-    gap: 10,
+    flexWrap: "wrap",
+    gap: 8,
     left: 10,
+    maxWidth: "78%",
     paddingHorizontal: 10,
     paddingVertical: 7,
     position: "absolute",

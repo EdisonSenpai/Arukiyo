@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
 import {
   ActivityIndicator,
   Alert,
@@ -18,12 +19,17 @@ import { ScreenHeader } from "@/components/ScreenHeader";
 import { COLORS, RADII, SPACING } from "@/constants/theme";
 import { useExplorationSession } from "@/hooks/useExplorationSession";
 import { formatApproximateCoordinate } from "@/lib/home-location";
+import {
+  formatDistance,
+  formatDuration,
+} from "@/lib/session-tracking";
 
 export default function ExploreScreen() {
   const { i18n, t } = useTranslation();
   const exploration = useExplorationSession();
   const [recenterToken, setRecenterToken] = useState(0);
 
+  const locale = i18n.resolvedLanguage ?? "en";
   const permissionGranted =
     exploration.permission?.granted === true;
   const permissionBlocked =
@@ -32,12 +38,29 @@ export default function ExploreScreen() {
 
   const completionText = useMemo(
     () =>
-      new Intl.NumberFormat(i18n.resolvedLanguage ?? "en", {
+      new Intl.NumberFormat(locale, {
         maximumFractionDigits: 1,
         minimumFractionDigits: 1,
       }).format(exploration.homeZoneCompletion),
-    [exploration.homeZoneCompletion, i18n.resolvedLanguage],
+    [exploration.homeZoneCompletion, locale],
   );
+
+  const handleSessionButton = async () => {
+    if (exploration.isSessionActive) {
+      const summary = await exploration.stopSession();
+
+      if (summary) {
+        router.push({
+          pathname: "/session-summary",
+          params: { id: summary.id },
+        });
+      }
+
+      return;
+    }
+
+    await exploration.startSession();
+  };
 
   const confirmSaveHome = () => {
     Alert.alert(
@@ -98,8 +121,8 @@ export default function ExploreScreen() {
       <View style={styles.page}>
         <View style={styles.header}>
           <ScreenHeader
-            eyebrow={t("explore.eyebrow")}
-            subtitle={t("explore.subtitle")}
+            eyebrow={t("session.eyebrow")}
+            subtitle={t("session.exploreSubtitle")}
             title={t("explore.title")}
             trailing={
               <View
@@ -134,6 +157,7 @@ export default function ExploreScreen() {
             currentLocation={exploration.currentLocation}
             homeLocation={exploration.homeLocation}
             recenterToken={recenterToken}
+            routePoints={exploration.routePoints}
           />
         </View>
 
@@ -163,7 +187,7 @@ export default function ExploreScreen() {
                 exploration.isHydrating
               }
               onPress={() => {
-                void exploration.startSession();
+                void handleSessionButton();
               }}
               style={({ pressed }) => [
                 styles.primaryButton,
@@ -194,6 +218,21 @@ export default function ExploreScreen() {
             </Pressable>
 
             <Pressable
+              accessibilityLabel={t("session.history")}
+              onPress={() => router.push("/session-history")}
+              style={({ pressed }) => [
+                styles.iconButton,
+                pressed && styles.pressed,
+              ]}
+            >
+              <Ionicons
+                color={COLORS.ink}
+                name="time-outline"
+                size={22}
+              />
+            </Pressable>
+
+            <Pressable
               disabled={exploration.isBusy}
               onPress={() => {
                 void exploration.refreshLocation();
@@ -204,7 +243,11 @@ export default function ExploreScreen() {
                 pressed && styles.pressed,
               ]}
             >
-              <Ionicons color={COLORS.ink} name="locate" size={22} />
+              <Ionicons
+                color={COLORS.ink}
+                name="locate"
+                size={22}
+              />
             </Pressable>
           </View>
 
@@ -224,6 +267,79 @@ export default function ExploreScreen() {
                 {t("explore.openSettings")}
               </Text>
             </Pressable>
+          ) : null}
+
+          {exploration.isSessionActive ||
+          exploration.routePoints.length > 0 ? (
+            <View style={styles.sessionCard}>
+              <View style={styles.sessionHeading}>
+                <View>
+                  <Text style={styles.sessionEyebrow}>
+                    {exploration.isSessionActive
+                      ? t("session.liveSession")
+                      : t("session.routePreview")}
+                  </Text>
+                  <Text style={styles.sessionPointMeta}>
+                    {t("session.acceptedRejected", {
+                      accepted:
+                        exploration.acceptedPointCount,
+                      rejected:
+                        exploration.rejectedPointCount,
+                    })}
+                  </Text>
+                </View>
+                <View
+                  style={[
+                    styles.liveDot,
+                    !exploration.isSessionActive &&
+                      styles.liveDotPaused,
+                  ]}
+                />
+              </View>
+
+              <View style={styles.sessionMetrics}>
+                <Metric
+                  icon="walk-outline"
+                  label={t("session.distance")}
+                  value={formatDistance(
+                    exploration.sessionDistanceMeters,
+                    locale,
+                  )}
+                />
+                <Metric
+                  icon="time-outline"
+                  label={t("session.duration")}
+                  value={formatDuration(
+                    exploration.sessionElapsedSeconds,
+                  )}
+                />
+                <Metric
+                  icon="grid-outline"
+                  label={t("session.newCells")}
+                  value={String(
+                    exploration.sessionNewCellCount,
+                  )}
+                />
+                <Metric
+                  icon="radio-outline"
+                  label={t("session.gpsPoints")}
+                  value={String(
+                    exploration.acceptedPointCount,
+                  )}
+                />
+              </View>
+
+              <View style={styles.accuracyNote}>
+                <Ionicons
+                  color={COLORS.matcha}
+                  name="shield-checkmark-outline"
+                  size={18}
+                />
+                <Text style={styles.accuracyText}>
+                  {t("session.accuracyGuard")}
+                </Text>
+              </View>
+            </View>
           ) : null}
 
           <View style={styles.progressCard}>
@@ -260,8 +376,10 @@ export default function ExploreScreen() {
             <View style={styles.progressMeta}>
               <Text style={styles.metaText}>
                 {t("explore.hexagons", {
-                  explored: exploration.homeZoneExploredCount,
-                  total: exploration.homeZoneTotalCount || 0,
+                  explored:
+                    exploration.homeZoneExploredCount,
+                  total:
+                    exploration.homeZoneTotalCount || 0,
                 })}
               </Text>
               <Text style={styles.metaText}>
@@ -353,10 +471,12 @@ export default function ExploreScreen() {
             <Stat
               label={t("explore.gpsAccuracy")}
               value={
-                exploration.currentLocation?.coords.accuracy == null
+                exploration.currentLocation?.coords
+                  .accuracy == null
                   ? "—"
                   : `±${Math.round(
-                      exploration.currentLocation.coords.accuracy,
+                      exploration.currentLocation.coords
+                        .accuracy,
                     )} m`
               }
             />
@@ -418,6 +538,36 @@ export default function ExploreScreen() {
   );
 }
 
+function Metric({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ComponentProps<typeof Ionicons>["name"];
+  label: string;
+  value: string;
+}) {
+  return (
+    <View style={styles.metric}>
+      <Ionicons
+        color={COLORS.vermilion}
+        name={icon}
+        size={18}
+      />
+      <Text
+        adjustsFontSizeToFit
+        numberOfLines={1}
+        style={styles.metricValue}
+      >
+        {value}
+      </Text>
+      <Text numberOfLines={1} style={styles.metricLabel}>
+        {label}
+      </Text>
+    </View>
+  );
+}
+
 function Stat({
   label,
   value,
@@ -444,11 +594,11 @@ const styles = StyleSheet.create({
   },
   mapArea: {
     flex: 1,
-    minHeight: 330,
+    minHeight: 315,
     paddingHorizontal: SPACING.medium,
     paddingTop: 14,
   },
-  panel: { flexGrow: 0, maxHeight: 310 },
+  panel: { flexGrow: 0, maxHeight: 385 },
   panelContent: {
     gap: 12,
     paddingBottom: 28,
@@ -526,7 +676,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     height: 50,
     justifyContent: "center",
-    width: 52,
+    width: 50,
   },
   settingsButton: {
     alignItems: "center",
@@ -543,6 +693,78 @@ const styles = StyleSheet.create({
     color: COLORS.ink,
     fontSize: 12,
     fontWeight: "800",
+  },
+  sessionCard: {
+    backgroundColor: COLORS.ink,
+    borderRadius: RADII.large,
+    padding: 15,
+  },
+  sessionHeading: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  sessionEyebrow: {
+    color: COLORS.sakuraSoft,
+    fontSize: 10,
+    fontWeight: "900",
+    letterSpacing: 1.2,
+  },
+  sessionPointMeta: {
+    color: "rgba(255,255,255,0.55)",
+    fontSize: 9,
+    marginTop: 3,
+  },
+  liveDot: {
+    backgroundColor: COLORS.success,
+    borderColor: "rgba(255,255,255,0.55)",
+    borderRadius: 7,
+    borderWidth: 3,
+    height: 14,
+    width: 14,
+  },
+  liveDotPaused: {
+    backgroundColor: COLORS.muted,
+  },
+  sessionMetrics: {
+    flexDirection: "row",
+    gap: 6,
+    marginTop: 14,
+  },
+  metric: {
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.08)",
+    borderRadius: 14,
+    flex: 1,
+    minWidth: 0,
+    paddingHorizontal: 4,
+    paddingVertical: 10,
+  },
+  metricValue: {
+    color: COLORS.white,
+    fontSize: 13,
+    fontWeight: "900",
+    marginTop: 5,
+  },
+  metricLabel: {
+    color: "rgba(255,255,255,0.55)",
+    fontSize: 8,
+    marginTop: 3,
+  },
+  accuracyNote: {
+    alignItems: "flex-start",
+    borderTopColor: "rgba(255,255,255,0.12)",
+    borderTopWidth: 1,
+    flexDirection: "row",
+    gap: 7,
+    marginTop: 13,
+    paddingTop: 11,
+  },
+  accuracyText: {
+    color: "rgba(255,255,255,0.62)",
+    flex: 1,
+    fontSize: 9,
+    lineHeight: 14,
   },
   progressCard: {
     backgroundColor: COLORS.white,
@@ -593,7 +815,11 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginTop: 8,
   },
-  metaText: { color: COLORS.muted, fontSize: 10, fontWeight: "700" },
+  metaText: {
+    color: COLORS.muted,
+    fontSize: 10,
+    fontWeight: "700",
+  },
   discoveryCard: {
     alignItems: "center",
     backgroundColor: COLORS.sakuraSoft,
@@ -613,9 +839,21 @@ const styles = StyleSheet.create({
     width: 42,
   },
   discoveryCopy: { flex: 1 },
-  discoveryTitle: { color: COLORS.ink, fontSize: 13, fontWeight: "900" },
-  discoveryCode: { color: COLORS.muted, fontSize: 9, marginTop: 3 },
-  reward: { color: COLORS.vermilion, fontSize: 11, fontWeight: "900" },
+  discoveryTitle: {
+    color: COLORS.ink,
+    fontSize: 13,
+    fontWeight: "900",
+  },
+  discoveryCode: {
+    color: COLORS.muted,
+    fontSize: 9,
+    marginTop: 3,
+  },
+  reward: {
+    color: COLORS.vermilion,
+    fontSize: 11,
+    fontWeight: "900",
+  },
   homeCard: {
     alignItems: "center",
     backgroundColor: COLORS.white,
@@ -635,15 +873,27 @@ const styles = StyleSheet.create({
     width: 44,
   },
   homeCopy: { flex: 1 },
-  homeTitle: { color: COLORS.ink, fontSize: 13, fontWeight: "900" },
-  homeDescription: { color: COLORS.muted, fontSize: 10, marginTop: 3 },
+  homeTitle: {
+    color: COLORS.ink,
+    fontSize: 13,
+    fontWeight: "900",
+  },
+  homeDescription: {
+    color: COLORS.muted,
+    fontSize: 10,
+    marginTop: 3,
+  },
   smallAction: {
     backgroundColor: COLORS.paperStrong,
     borderRadius: RADII.pill,
     paddingHorizontal: 11,
     paddingVertical: 8,
   },
-  smallActionText: { color: COLORS.ink, fontSize: 10, fontWeight: "900" },
+  smallActionText: {
+    color: COLORS.ink,
+    fontSize: 10,
+    fontWeight: "900",
+  },
   statsRow: { flexDirection: "row", gap: 8 },
   stat: {
     alignItems: "center",
@@ -655,7 +905,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 5,
     paddingVertical: 11,
   },
-  statValue: { color: COLORS.ink, fontSize: 12, fontWeight: "900" },
+  statValue: {
+    color: COLORS.ink,
+    fontSize: 12,
+    fontWeight: "900",
+  },
   statLabel: {
     color: COLORS.muted,
     fontSize: 8,
@@ -696,5 +950,8 @@ const styles = StyleSheet.create({
     fontSize: 10,
     lineHeight: 16,
   },
-  pressed: { opacity: 0.72, transform: [{ scale: 0.99 }] },
+  pressed: {
+    opacity: 0.72,
+    transform: [{ scale: 0.99 }],
+  },
 });

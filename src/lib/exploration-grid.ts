@@ -34,14 +34,14 @@ export type CellFeatureCollection = {
 
 export type PointFeatureCollection = {
   type: "FeatureCollection";
-  features: Array<{
+  features: {
     type: "Feature";
     properties: Record<string, string | number | boolean>;
     geometry: {
       type: "Point";
       coordinates: LngLat;
     };
-  }>;
+  }[];
 };
 
 export function locationToCell(
