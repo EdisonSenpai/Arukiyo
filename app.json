@@ -2,8 +2,7 @@
   "expo": {
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "backgroundImage": "./assets/images/android-icon-background.png",
+        "backgroundColor": "#F7F1E7",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
@@ -25,9 +24,14 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#208AEF",
+          "backgroundColor": "#F7F1E7",
           "image": "./assets/images/splash-icon.png",
-          "imageWidth": 76
+          "imageWidth": 190,
+          "resizeMode": "contain",
+          "dark": {
+            "backgroundColor": "#17231F",
+            "image": "./assets/images/splash-icon-dark.png"
+          }
         }
       ],
       [
@@ -72,6 +76,14 @@
     "web": {
       "favicon": "./assets/images/favicon.png",
       "output": "static"
-    }
+    },
+    "extra": {
+      "appVariant": "development",
+      "router": {},
+      "eas": {
+        "projectId": "87af4746-2cb0-4a93-9d29-20080b89bc69"
+      }
+    },
+    "owner": "edisonsenpai"
   }
 }
