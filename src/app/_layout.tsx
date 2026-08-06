@@ -4,6 +4,7 @@ import { StatusBar } from "expo-status-bar";
 
 import { COLORS } from "@/constants/theme";
 import { migrateExplorationDatabase } from "@/lib/exploration-db";
+import { ExplorationSessionProvider } from "@/providers/ExplorationSessionProvider";
 import { LanguageProvider } from "@/providers/LanguageProvider";
 
 export default function RootLayout() {
@@ -13,21 +14,25 @@ export default function RootLayout() {
       onInit={migrateExplorationDatabase}
     >
       <LanguageProvider>
-        <StatusBar style="dark" />
-        <Stack
-          screenOptions={{
-            animation: "slide_from_right",
-            contentStyle: { backgroundColor: COLORS.paper },
-            headerShown: false,
-          }}
-        >
-          <Stack.Screen name="(tabs)" />
-          <Stack.Screen name="shop" />
-          <Stack.Screen name="settings" />
-          <Stack.Screen name="language" />
-          <Stack.Screen name="session-summary" />
-          <Stack.Screen name="session-history" />
-        </Stack>
+        <ExplorationSessionProvider>
+          <StatusBar style="dark" />
+          <Stack
+            screenOptions={{
+              animation: "slide_from_right",
+              contentStyle: {
+                backgroundColor: COLORS.paper,
+              },
+              headerShown: false,
+            }}
+          >
+            <Stack.Screen name="(tabs)" />
+            <Stack.Screen name="shop" />
+            <Stack.Screen name="settings" />
+            <Stack.Screen name="language" />
+            <Stack.Screen name="session-summary" />
+            <Stack.Screen name="session-history" />
+          </Stack>
+        </ExplorationSessionProvider>
       </LanguageProvider>
     </SQLiteProvider>
   );
