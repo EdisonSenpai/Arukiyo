@@ -29,15 +29,19 @@ import {
   formatDistance,
   formatDuration,
 } from "@/lib/session-tracking";
+import { useExplorationSession } from "@/providers/ExplorationSessionProvider";
 
 export default function SessionHistoryScreen() {
   const database = useSQLiteContext();
+  const exploration = useExplorationSession();
   const { i18n, t } = useTranslation();
   const [sessions, setSessions] = useState<
     ExplorationSessionSummary[]
   >([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(
+    null,
+  );
 
   const locale = i18n.resolvedLanguage ?? "en";
   const dateFormatter = useMemo(
@@ -66,7 +70,9 @@ export default function SessionHistoryScreen() {
           }
         } catch {
           if (active) {
-            setError(t("session.errors.loadHistory"));
+            setError(
+              t("session.errors.loadHistory"),
+            );
           }
         } finally {
           if (active) {
@@ -100,6 +106,7 @@ export default function SessionHistoryScreen() {
             size={23}
           />
         </Pressable>
+
         <View style={styles.headerCopy}>
           <Text style={styles.eyebrow}>
             {t("session.historyEyebrow")}
@@ -113,9 +120,30 @@ export default function SessionHistoryScreen() {
         </View>
       </View>
 
+      {exploration.isSessionActive ? (
+        <ActiveSessionCard
+          acceptedPoints={
+            exploration.acceptedPointCount
+          }
+          distance={formatDistance(
+            exploration.sessionDistanceMeters,
+            locale,
+          )}
+          duration={formatDuration(
+            exploration.sessionElapsedSeconds,
+          )}
+          newCells={exploration.sessionNewCellCount}
+          onReturn={() =>
+            router.replace("/explore")
+          }
+        />
+      ) : null}
+
       {isLoading ? (
         <View style={styles.centered}>
-          <ActivityIndicator color={COLORS.vermilion} />
+          <ActivityIndicator
+            color={COLORS.vermilion}
+          />
           <Text style={styles.loadingText}>
             {t("session.loading")}
           </Text>
@@ -127,7 +155,9 @@ export default function SessionHistoryScreen() {
             name="alert-circle-outline"
             size={36}
           />
-          <Text style={styles.errorText}>{error}</Text>
+          <Text style={styles.errorText}>
+            {error}
+          </Text>
         </View>
       ) : sessions.length === 0 ? (
         <View style={styles.centered}>
@@ -145,7 +175,9 @@ export default function SessionHistoryScreen() {
             {t("session.emptyCopy")}
           </Text>
           <Pressable
-            onPress={() => router.replace("/explore")}
+            onPress={() =>
+              router.replace("/explore")
+            }
             style={styles.primaryButton}
           >
             <Text style={styles.primaryButtonText}>
@@ -180,6 +212,7 @@ export default function SessionHistoryScreen() {
                     size={25}
                   />
                 </View>
+
                 <View style={styles.cardCopy}>
                   <Text style={styles.cardDate}>
                     {dateFormatter.format(
@@ -192,6 +225,7 @@ export default function SessionHistoryScreen() {
                     )}
                   </Text>
                 </View>
+
                 <Ionicons
                   color={COLORS.muted}
                   name="chevron-forward"
@@ -228,8 +262,12 @@ export default function SessionHistoryScreen() {
                     name="pause-circle-outline"
                     size={16}
                   />
-                  <Text style={styles.interruptedText}>
-                    {t("session.interruptedCopy")}
+                  <Text
+                    style={styles.interruptedText}
+                  >
+                    {t(
+                      "session.interruptedCopy",
+                    )}
                   </Text>
                 </View>
               ) : null}
@@ -238,6 +276,93 @@ export default function SessionHistoryScreen() {
         </ScrollView>
       )}
     </SafeAreaView>
+  );
+}
+
+function ActiveSessionCard({
+  acceptedPoints,
+  distance,
+  duration,
+  newCells,
+  onReturn,
+}: {
+  acceptedPoints: number;
+  distance: string;
+  duration: string;
+  newCells: number;
+  onReturn: () => void;
+}) {
+  const { t } = useTranslation();
+
+  return (
+    <View style={styles.activeCard}>
+      <View style={styles.activeHeader}>
+        <View>
+          <Text style={styles.activeEyebrow}>
+            {t("session.liveSession")}
+          </Text>
+          <Text style={styles.activeMeta}>
+            {t("session.acceptedRejected", {
+              accepted: acceptedPoints,
+              rejected: 0,
+            })}
+          </Text>
+        </View>
+
+        <View style={styles.activeDot} />
+      </View>
+
+      <View style={styles.activeMetrics}>
+        <ActiveMetric
+          label={t("session.distance")}
+          value={distance}
+        />
+        <ActiveMetric
+          label={t("session.duration")}
+          value={duration}
+        />
+        <ActiveMetric
+          label={t("session.newCells")}
+          value={String(newCells)}
+        />
+      </View>
+
+      <Pressable
+        onPress={onReturn}
+        style={({ pressed }) => [
+          styles.returnButton,
+          pressed && styles.pressed,
+        ]}
+      >
+        <Ionicons
+          color={COLORS.ink}
+          name="navigate-outline"
+          size={18}
+        />
+        <Text style={styles.returnButtonText}>
+          {t("session.backToExplore")}
+        </Text>
+      </Pressable>
+    </View>
+  );
+}
+
+function ActiveMetric({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <View style={styles.activeMetric}>
+      <Text style={styles.activeMetricValue}>
+        {value}
+      </Text>
+      <Text style={styles.activeMetricLabel}>
+        {label}
+      </Text>
+    </View>
   );
 }
 
@@ -250,8 +375,12 @@ function HistoryMetric({
 }) {
   return (
     <View style={styles.metric}>
-      <Text style={styles.metricValue}>{value}</Text>
-      <Text style={styles.metricLabel}>{label}</Text>
+      <Text style={styles.metricValue}>
+        {value}
+      </Text>
+      <Text style={styles.metricLabel}>
+        {label}
+      </Text>
     </View>
   );
 }
@@ -299,6 +428,76 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 18,
     marginTop: 4,
+  },
+  activeCard: {
+    backgroundColor: COLORS.ink,
+    borderRadius: RADII.large,
+    marginHorizontal: SPACING.medium,
+    marginTop: SPACING.large,
+    padding: 15,
+  },
+  activeHeader: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  activeEyebrow: {
+    color: COLORS.sakuraSoft,
+    fontSize: 10,
+    fontWeight: "900",
+    letterSpacing: 1.2,
+  },
+  activeMeta: {
+    color: "rgba(255,255,255,0.55)",
+    fontSize: 9,
+    marginTop: 3,
+  },
+  activeDot: {
+    backgroundColor: COLORS.success,
+    borderColor: "rgba(255,255,255,0.55)",
+    borderRadius: 7,
+    borderWidth: 3,
+    height: 14,
+    width: 14,
+  },
+  activeMetrics: {
+    flexDirection: "row",
+    gap: 7,
+    marginTop: 13,
+  },
+  activeMetric: {
+    alignItems: "center",
+    backgroundColor:
+      "rgba(255,255,255,0.08)",
+    borderRadius: 13,
+    flex: 1,
+    paddingHorizontal: 5,
+    paddingVertical: 9,
+  },
+  activeMetricValue: {
+    color: COLORS.white,
+    fontSize: 13,
+    fontWeight: "900",
+  },
+  activeMetricLabel: {
+    color: "rgba(255,255,255,0.55)",
+    fontSize: 8,
+    marginTop: 3,
+  },
+  returnButton: {
+    alignItems: "center",
+    backgroundColor: COLORS.white,
+    borderRadius: RADII.medium,
+    flexDirection: "row",
+    gap: 7,
+    justifyContent: "center",
+    marginTop: 12,
+    minHeight: 44,
+  },
+  returnButtonText: {
+    color: COLORS.ink,
+    fontSize: 11,
+    fontWeight: "900",
   },
   centered: {
     alignItems: "center",

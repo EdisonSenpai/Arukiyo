@@ -23,7 +23,7 @@ import { DiscoveryCelebration } from "@/components/DiscoveryCelebration";
 import { ExplorationMap } from "@/components/ExplorationMap";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { COLORS, RADII, SPACING } from "@/constants/theme";
-import { useExplorationSession } from "@/hooks/useExplorationSession";
+import { useExplorationSession } from "@/providers/ExplorationSessionProvider";
 import { formatApproximateCoordinate } from "@/lib/home-location";
 import {
   formatDistance,
