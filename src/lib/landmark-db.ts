@@ -54,6 +54,31 @@ type UnlockRow = {
   landmark_id: string;
 };
 
+type UnlockedLandmarkRow = LandmarkRow & {
+  gps_accuracy_meters: number | null;
+  reward_coins: number;
+  reward_sakura_shards: number;
+  reward_xp: number;
+  session_distance_meters: number | null;
+  session_duration_seconds: number | null;
+  session_id: string | null;
+  session_started_at: string | null;
+  unlock_distance_meters: number | null;
+  unlocked_at: string;
+};
+
+type LandmarkContentRow = {
+  fetched_at: string;
+  image_url: string | null;
+  language: string;
+  landmark_id: string;
+  source_language: string | null;
+  summary: string | null;
+  title: string | null;
+  wikipedia_url: string | null;
+  wikidata_description: string | null;
+};
+
 export type LandmarkScanState = {
   centerLatitude: number;
   centerLongitude: number;
@@ -73,6 +98,31 @@ export type LandmarkUnlockResult = {
     xp: number;
   };
   unlockedAt: string;
+};
+
+export type UnlockedLandmarkSummary = LandmarkRecord & {
+  discovery: {
+    gpsAccuracyMeters: number | null;
+    reward: LandmarkReward;
+    sessionDistanceMeters: number | null;
+    sessionDurationSeconds: number | null;
+    sessionId: string | null;
+    sessionStartedAt: string | null;
+    unlockDistanceMeters: number | null;
+    unlockedAt: string;
+  };
+};
+
+export type LandmarkContentCache = {
+  fetchedAt: string;
+  imageUrl: string | null;
+  language: string;
+  landmarkId: string;
+  sourceLanguage: string | null;
+  summary: string | null;
+  title: string | null;
+  wikipediaUrl: string | null;
+  wikidataDescription: string | null;
 };
 
 export async function ensureLandmarkDatabase(
@@ -136,6 +186,22 @@ export async function ensureLandmarkDatabase(
 
     CREATE INDEX IF NOT EXISTS idx_landmark_unlocks_date
       ON landmark_unlocks (unlocked_at DESC);
+
+    CREATE TABLE IF NOT EXISTS landmark_content_cache (
+      landmark_id TEXT NOT NULL,
+      language TEXT NOT NULL,
+      source_language TEXT,
+      title TEXT,
+      summary TEXT,
+      image_url TEXT,
+      wikipedia_url TEXT,
+      wikidata_description TEXT,
+      fetched_at TEXT NOT NULL,
+      PRIMARY KEY (landmark_id, language),
+      FOREIGN KEY (landmark_id)
+        REFERENCES landmarks (id)
+        ON DELETE CASCADE
+    );
   `);
 
   await ensureColumn(
@@ -463,6 +529,228 @@ export async function unlockLandmark(
       xp: totals?.total_xp ?? reward.xp,
     },
     unlockedAt,
+  };
+}
+
+
+export async function listUnlockedLandmarks(
+  database: SQLiteDatabase,
+): Promise<UnlockedLandmarkSummary[]> {
+  await ensureLandmarkDatabase(database);
+
+  const rows =
+    await database.getAllAsync<UnlockedLandmarkRow>(
+      `
+        SELECT
+          landmarks.id,
+          landmarks.source_type,
+          landmarks.source_id,
+          landmarks.name,
+          landmarks.latitude,
+          landmarks.longitude,
+          landmarks.category,
+          landmarks.importance_score,
+          landmarks.importance_tier,
+          landmarks.eligible,
+          landmarks.wikidata_id,
+          landmarks.wikipedia_tag,
+          landmarks.official_url,
+          landmarks.source_url,
+          landmarks.tags_json,
+          landmarks.first_seen_at,
+          landmarks.last_seen_at,
+          landmark_unlocks.session_id,
+          landmark_unlocks.unlocked_at,
+          landmark_unlocks.unlock_distance_meters,
+          landmark_unlocks.gps_accuracy_meters,
+          landmark_unlocks.reward_xp,
+          landmark_unlocks.reward_coins,
+          landmark_unlocks.reward_sakura_shards,
+          exploration_sessions.started_at
+            AS session_started_at,
+          exploration_sessions.distance_meters
+            AS session_distance_meters,
+          exploration_sessions.duration_seconds
+            AS session_duration_seconds
+        FROM landmark_unlocks
+        INNER JOIN landmarks
+          ON landmarks.id = landmark_unlocks.landmark_id
+        LEFT JOIN exploration_sessions
+          ON exploration_sessions.id =
+            landmark_unlocks.session_id
+        ORDER BY landmark_unlocks.unlocked_at DESC
+      `,
+    );
+
+  return rows.map(mapUnlockedLandmarkRow);
+}
+
+export async function getUnlockedLandmark(
+  database: SQLiteDatabase,
+  landmarkId: string,
+): Promise<UnlockedLandmarkSummary | null> {
+  await ensureLandmarkDatabase(database);
+
+  const row =
+    await database.getFirstAsync<UnlockedLandmarkRow>(
+      `
+        SELECT
+          landmarks.id,
+          landmarks.source_type,
+          landmarks.source_id,
+          landmarks.name,
+          landmarks.latitude,
+          landmarks.longitude,
+          landmarks.category,
+          landmarks.importance_score,
+          landmarks.importance_tier,
+          landmarks.eligible,
+          landmarks.wikidata_id,
+          landmarks.wikipedia_tag,
+          landmarks.official_url,
+          landmarks.source_url,
+          landmarks.tags_json,
+          landmarks.first_seen_at,
+          landmarks.last_seen_at,
+          landmark_unlocks.session_id,
+          landmark_unlocks.unlocked_at,
+          landmark_unlocks.unlock_distance_meters,
+          landmark_unlocks.gps_accuracy_meters,
+          landmark_unlocks.reward_xp,
+          landmark_unlocks.reward_coins,
+          landmark_unlocks.reward_sakura_shards,
+          exploration_sessions.started_at
+            AS session_started_at,
+          exploration_sessions.distance_meters
+            AS session_distance_meters,
+          exploration_sessions.duration_seconds
+            AS session_duration_seconds
+        FROM landmark_unlocks
+        INNER JOIN landmarks
+          ON landmarks.id = landmark_unlocks.landmark_id
+        LEFT JOIN exploration_sessions
+          ON exploration_sessions.id =
+            landmark_unlocks.session_id
+        WHERE landmarks.id = ?
+        LIMIT 1
+      `,
+      landmarkId,
+    );
+
+  return row ? mapUnlockedLandmarkRow(row) : null;
+}
+
+export async function getLandmarkContentCache(
+  database: SQLiteDatabase,
+  landmarkId: string,
+  language: string,
+): Promise<LandmarkContentCache | null> {
+  await ensureLandmarkDatabase(database);
+
+  const row =
+    await database.getFirstAsync<LandmarkContentRow>(
+      `
+        SELECT
+          landmark_id,
+          language,
+          source_language,
+          title,
+          summary,
+          image_url,
+          wikipedia_url,
+          wikidata_description,
+          fetched_at
+        FROM landmark_content_cache
+        WHERE landmark_id = ?
+          AND language = ?
+        LIMIT 1
+      `,
+      landmarkId,
+      language,
+    );
+
+  if (!row) {
+    return null;
+  }
+
+  return {
+    fetchedAt: row.fetched_at,
+    imageUrl: row.image_url,
+    language: row.language,
+    landmarkId: row.landmark_id,
+    sourceLanguage: row.source_language,
+    summary: row.summary,
+    title: row.title,
+    wikipediaUrl: row.wikipedia_url,
+    wikidataDescription: row.wikidata_description,
+  };
+}
+
+export async function saveLandmarkContentCache(
+  database: SQLiteDatabase,
+  content: LandmarkContentCache,
+): Promise<void> {
+  await ensureLandmarkDatabase(database);
+
+  await database.runAsync(
+    `
+      INSERT INTO landmark_content_cache (
+        landmark_id,
+        language,
+        source_language,
+        title,
+        summary,
+        image_url,
+        wikipedia_url,
+        wikidata_description,
+        fetched_at
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(landmark_id, language)
+      DO UPDATE SET
+        source_language = excluded.source_language,
+        title = excluded.title,
+        summary = excluded.summary,
+        image_url = excluded.image_url,
+        wikipedia_url = excluded.wikipedia_url,
+        wikidata_description =
+          excluded.wikidata_description,
+        fetched_at = excluded.fetched_at
+    `,
+    content.landmarkId,
+    content.language,
+    content.sourceLanguage,
+    content.title,
+    content.summary,
+    content.imageUrl,
+    content.wikipediaUrl,
+    content.wikidataDescription,
+    content.fetchedAt,
+  );
+}
+
+function mapUnlockedLandmarkRow(
+  row: UnlockedLandmarkRow,
+): UnlockedLandmarkSummary {
+  return {
+    ...mapLandmarkRow(row),
+    discovery: {
+      gpsAccuracyMeters: row.gps_accuracy_meters,
+      reward: {
+        coins: row.reward_coins,
+        sakuraShards: row.reward_sakura_shards,
+        xp: row.reward_xp,
+      },
+      sessionDistanceMeters:
+        row.session_distance_meters,
+      sessionDurationSeconds:
+        row.session_duration_seconds,
+      sessionId: row.session_id,
+      sessionStartedAt: row.session_started_at,
+      unlockDistanceMeters:
+        row.unlock_distance_meters,
+      unlockedAt: row.unlocked_at,
+    },
   };
 }
 

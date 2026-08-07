@@ -30,6 +30,62 @@ export const landmarkEn = {
     undiscoveredPin: "Undiscovered landmark",
     unlockedPin: "Discovered landmark",
   },
+
+  journal: {
+    subtitle:
+      "Your personal travel book now keeps every landmark you physically discover.",
+    collectionEyebrow: "LANDMARK COLLECTION",
+    discoveredCount: "{{count}} landmarks discovered",
+    iconicCount: "{{count}} iconic discoveries",
+    landmarks: "Landmarks",
+    stamps: "Stamps",
+    collections: "Collections",
+    loading: "Loading your landmark collection…",
+    error: "Your landmark collection could not be loaded.",
+    emptyTitle: "No landmarks discovered yet",
+    emptyCopy:
+      "Start an exploration session, follow a gold landmark pin, and approach it to add the place to your Journal.",
+    discoveredOn: "Discovered {{date}}",
+    stampsCopy:
+      "Journey Stamps remain part of Arukiyo and will be expanded alongside landmark achievements.",
+    collectionsCopy:
+      "City, regional, historical, cultural, and themed landmark collections will build on these discoveries.",
+  },
+  detail: {
+    eyebrow: "DISCOVERED LANDMARK",
+    loading: "Loading landmark…",
+    loadingSources: "Loading verified source information…",
+    notFound:
+      "This discovered landmark could not be found locally.",
+    about: "About & history",
+    noVerifiedHistory:
+      "Arukiyo does not have verified historical text for this place yet. Available source links are shown below instead of generating unsupported history.",
+    quickFacts: "Quick facts",
+    yourDiscovery: "YOUR DISCOVERY",
+    discoveryDetails: "Discovery details",
+    unlockDistance: "Unlock distance",
+    gpsAccuracy: "GPS accuracy",
+    journeyDistance: "Journey distance",
+    journeyDuration: "Journey duration",
+    reward: "DISCOVERY REWARD",
+    sources: "Sources & read more",
+    officialWebsite: "Official website",
+    sourceNote:
+      "Historical text and imagery are shown only when a linked source provides them. Open the sources for the complete original information.",
+    imageCredit:
+      "Image preview via the linked Wikipedia/Wikimedia page.",
+    fact: {
+      historic: "Historic type",
+      heritage: "Heritage",
+      startDate: "Date / period",
+      architect: "Architect",
+      religion: "Religion",
+      denomination: "Denomination",
+      tourism: "Tourism type",
+      building: "Building type",
+      operator: "Operator",
+    },
+  },
   category: {
     historic: "Historic",
     museum: "Museum",
@@ -68,7 +124,7 @@ export const landmarkRo = {
     score: "scor {{score}}",
     distance: "la {{distance}}",
     footnote:
-      "Landmark-urile apar pe hartă drept obiective de explorare. Pornește o călătorie și apropie-te de un pin pentru a-l descoperi.",
+      "Landmark-urile apar pe hartă ca obiective de explorare. Pornește o călătorie și apropie-te de un pin pentru a-l descoperi.",
     networkFallback:
       "Actualizarea din rețea a eșuat, deci Arukiyo afișează datele landmark salvate local.",
   },
@@ -79,6 +135,62 @@ export const landmarkRo = {
     continue: "Continuă explorarea",
     undiscoveredPin: "Landmark nedescoperit",
     unlockedPin: "Landmark descoperit",
+  },
+
+  journal: {
+    subtitle:
+      "Jurnalul tău personal păstrează acum fiecare landmark descoperit fizic.",
+    collectionEyebrow: "COLECȚIE LANDMARK-URI",
+    discoveredCount: "{{count}} landmark-uri descoperite",
+    iconicCount: "{{count}} descoperiri emblematice",
+    landmarks: "Landmark-uri",
+    stamps: "Ștampile",
+    collections: "Colecții",
+    loading: "Se încarcă landmark-urile descoperite…",
+    error: "Colecția de landmark-uri nu a putut fi încărcată.",
+    emptyTitle: "Niciun landmark descoperit încă",
+    emptyCopy:
+      "Pornește o sesiune de explorare, urmează un pin auriu și apropie-te de obiectiv pentru a-l adăuga în Jurnal.",
+    discoveredOn: "Descoperit la {{date}}",
+    stampsCopy:
+      "Journey Stamps rămân parte din Arukiyo și vor fi extinse împreună cu realizările pentru landmark-uri.",
+    collectionsCopy:
+      "Colecțiile de oraș, regionale, istorice, culturale și tematice vor fi construite peste aceste descoperiri.",
+  },
+  detail: {
+    eyebrow: "LANDMARK DESCOPERIT",
+    loading: "Se încarcă landmark-ul…",
+    loadingSources: "Se încarcă informațiile din surse verificate…",
+    notFound:
+      "Acest landmark descoperit nu a putut fi găsit local.",
+    about: "Despre & istoric",
+    noVerifiedHistory:
+      "Arukiyo nu are încă text istoric verificat pentru acest loc. Sunt afișate sursele disponibile, fără a inventa informații.",
+    quickFacts: "Date rapide",
+    yourDiscovery: "DESCOPERIREA TA",
+    discoveryDetails: "Detaliile descoperirii",
+    unlockDistance: "Distanță la deblocare",
+    gpsAccuracy: "Precizie GPS",
+    journeyDistance: "Distanța călătoriei",
+    journeyDuration: "Durata călătoriei",
+    reward: "RECOMPENSA DESCOPERIRII",
+    sources: "Surse & citește mai mult",
+    officialWebsite: "Site oficial",
+    sourceNote:
+      "Textul istoric și imaginile apar doar când există o sursă asociată. Deschide sursele pentru informația originală completă.",
+    imageCredit:
+      "Previzualizare imagine prin pagina Wikipedia/Wikimedia asociată.",
+    fact: {
+      historic: "Tip istoric",
+      heritage: "Patrimoniu",
+      startDate: "Dată / perioadă",
+      architect: "Arhitect",
+      religion: "Religie",
+      denomination: "Confesiune",
+      tourism: "Tip turistic",
+      building: "Tip clădire",
+      operator: "Administrator",
+    },
   },
   category: {
     historic: "Istoric",
@@ -129,6 +241,62 @@ export const landmarkJa = {
     continue: "探索を続ける",
     undiscoveredPin: "未発見のランドマーク",
     unlockedPin: "発見済みランドマーク",
+  },
+
+  journal: {
+    subtitle:
+      "実際に発見したランドマークを、あなただけの旅日記に保存します。",
+    collectionEyebrow: "ランドマークコレクション",
+    discoveredCount: "{{count}}件のランドマークを発見",
+    iconicCount: "象徴的な発見 {{count}}件",
+    landmarks: "ランドマーク",
+    stamps: "スタンプ",
+    collections: "コレクション",
+    loading: "ランドマークコレクションを読み込んでいます…",
+    error: "ランドマークコレクションを読み込めませんでした。",
+    emptyTitle: "まだランドマークを発見していません",
+    emptyCopy:
+      "探索セッションを開始し、金色のピンを追って近づくと旅日記に追加されます。",
+    discoveredOn: "{{date}}に発見",
+    stampsCopy:
+      "Journey Stampsは今後ランドマーク実績とともに拡張されます。",
+    collectionsCopy:
+      "都市・地域・歴史・文化・テーマ別コレクションを、発見したランドマークから構築します。",
+  },
+  detail: {
+    eyebrow: "発見済みランドマーク",
+    loading: "ランドマークを読み込んでいます…",
+    loadingSources: "確認済みソースを読み込んでいます…",
+    notFound:
+      "この発見済みランドマークは端末内で見つかりませんでした。",
+    about: "概要・歴史",
+    noVerifiedHistory:
+      "この場所について確認済みの歴史情報はまだありません。根拠のない内容は生成せず、利用可能な情報源を表示します。",
+    quickFacts: "基本情報",
+    yourDiscovery: "あなたの発見",
+    discoveryDetails: "発見の詳細",
+    unlockDistance: "発見距離",
+    gpsAccuracy: "GPS精度",
+    journeyDistance: "旅の距離",
+    journeyDuration: "旅の時間",
+    reward: "発見報酬",
+    sources: "情報源・続きを読む",
+    officialWebsite: "公式サイト",
+    sourceNote:
+      "歴史テキストと画像は関連する情報源がある場合のみ表示されます。完全な情報は元の情報源を開いて確認してください。",
+    imageCredit:
+      "関連するWikipedia/Wikimediaページの画像プレビュー。",
+    fact: {
+      historic: "歴史種別",
+      heritage: "文化遺産",
+      startDate: "年代",
+      architect: "建築家",
+      religion: "宗教",
+      denomination: "宗派",
+      tourism: "観光種別",
+      building: "建物種別",
+      operator: "運営",
+    },
   },
   category: {
     historic: "歴史",
