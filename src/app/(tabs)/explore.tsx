@@ -21,6 +21,7 @@ import { useTranslation } from "react-i18next";
 
 import { DiscoveryCelebration } from "@/components/DiscoveryCelebration";
 import { ExplorationMap } from "@/components/ExplorationMap";
+import { LandmarkScannerCard } from "@/components/LandmarkScannerCard";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { COLORS, RADII, SPACING } from "@/constants/theme";
 import { useExplorationSession } from "@/providers/ExplorationSessionProvider";
@@ -382,6 +383,8 @@ export default function ExploreScreen() {
               </View>
             </View>
           ) : null}
+
+          <LandmarkScannerCard />
 
           <View style={styles.progressCard}>
             <View style={styles.progressHeader}>
