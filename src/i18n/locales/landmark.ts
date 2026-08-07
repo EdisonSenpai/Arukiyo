@@ -1,6 +1,6 @@
 export const landmarkEn = {
   engine: {
-    eyebrow: "STAGE 4C1 · LANDMARK ENGINE",
+    eyebrow: "LANDMARK DISCOVERY",
     title: "Nearby landmarks",
     subtitle:
       "Arukiyo scans nearby OpenStreetMap data and keeps only places that look culturally, historically, or locally important.",
@@ -18,9 +18,17 @@ export const landmarkEn = {
     score: "score {{score}}",
     distance: "{{distance}} away",
     footnote:
-      "4C1 only identifies and caches candidates. Physical unlocks and discovery cards arrive in 4C2.",
+      "Landmarks appear as exploration targets on the map. Start a journey and approach a pin to discover it.",
     networkFallback:
       "Network refresh failed, so Arukiyo is showing cached landmark data.",
+  },
+  discovery: {
+    eyebrow: "NEW LANDMARK DISCOVERED",
+    saved:
+      "This landmark is now part of your local collection. Journal details and historical sources arrive in Stage 4C3.",
+    continue: "Continue exploring",
+    undiscoveredPin: "Undiscovered landmark",
+    unlockedPin: "Discovered landmark",
   },
   category: {
     historic: "Historic",
@@ -42,7 +50,7 @@ export const landmarkEn = {
 
 export const landmarkRo = {
   engine: {
-    eyebrow: "STAGE 4C1 · MOTOR LANDMARK",
+    eyebrow: "DESCOPERIRE LANDMARK-URI",
     title: "Landmark-uri din apropiere",
     subtitle:
       "Arukiyo scanează date OpenStreetMap din apropiere și păstrează doar locurile care par importante cultural, istoric sau local.",
@@ -60,9 +68,17 @@ export const landmarkRo = {
     score: "scor {{score}}",
     distance: "la {{distance}}",
     footnote:
-      "4C1 doar identifică și salvează candidații. Deblocarea fizică și cardurile de descoperire vin în 4C2.",
+      "Landmark-urile apar pe hartă drept obiective de explorare. Pornește o călătorie și apropie-te de un pin pentru a-l descoperi.",
     networkFallback:
       "Actualizarea din rețea a eșuat, deci Arukiyo afișează datele landmark salvate local.",
+  },
+  discovery: {
+    eyebrow: "LANDMARK NOU DESCOPERIT",
+    saved:
+      "Acest landmark face acum parte din colecția ta locală. Detaliile din Jurnal și sursele istorice vin în Stage 4C3.",
+    continue: "Continuă explorarea",
+    undiscoveredPin: "Landmark nedescoperit",
+    unlockedPin: "Landmark descoperit",
   },
   category: {
     historic: "Istoric",
@@ -84,7 +100,7 @@ export const landmarkRo = {
 
 export const landmarkJa = {
   engine: {
-    eyebrow: "STAGE 4C1 · ランドマークエンジン",
+    eyebrow: "ランドマーク発見",
     title: "近くのランドマーク",
     subtitle:
       "Arukiyoは周辺のOpenStreetMapデータを調べ、文化・歴史・地域的に重要な場所を候補として保存します。",
@@ -102,9 +118,17 @@ export const landmarkJa = {
     score: "スコア {{score}}",
     distance: "{{distance}}先",
     footnote:
-      "4C1では候補の識別と保存のみを行います。実際の発見解除とカードは4C2で追加します。",
+      "ランドマークは探索目標として地図に表示されます。旅を開始し、ピンに近づいて発見しましょう。",
     networkFallback:
       "ネットワーク更新に失敗したため、保存済みのランドマークデータを表示しています。",
+  },
+  discovery: {
+    eyebrow: "新しいランドマークを発見",
+    saved:
+      "このランドマークはローカルコレクションに保存されました。旅日記の詳細と歴史資料はStage 4C3で追加します。",
+    continue: "探索を続ける",
+    undiscoveredPin: "未発見のランドマーク",
+    unlockedPin: "発見済みランドマーク",
   },
   category: {
     historic: "歴史",

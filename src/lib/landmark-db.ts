@@ -1,8 +1,10 @@
 import type { SQLiteDatabase } from "expo-sqlite";
 
+import { LANDMARK_SCAN_RADIUS_METERS } from "@/constants/landmarks";
 import {
-  LANDMARK_SCAN_RADIUS_METERS,
-} from "@/constants/landmarks";
+  rewardForLandmarkTier,
+  type LandmarkReward,
+} from "@/lib/landmark-rewards";
 import {
   haversineDistanceMeters,
   type LandmarkCategory,
@@ -42,6 +44,16 @@ type ScanStateRow = {
   stored_candidate_count: number;
 };
 
+type PlayerCurrencyRow = {
+  coins: number;
+  sakura_shards: number;
+  total_xp: number;
+};
+
+type UnlockRow = {
+  landmark_id: string;
+};
+
 export type LandmarkScanState = {
   centerLatitude: number;
   centerLongitude: number;
@@ -50,6 +62,17 @@ export type LandmarkScanState = {
   radiusMeters: number;
   rawCandidateCount: number;
   storedCandidateCount: number;
+};
+
+export type LandmarkUnlockResult = {
+  landmark: LandmarkRecord;
+  reward: LandmarkReward;
+  totals: {
+    coins: number;
+    sakuraShards: number;
+    xp: number;
+  };
+  unlockedAt: string;
 };
 
 export async function ensureLandmarkDatabase(
@@ -84,8 +107,7 @@ export async function ensureLandmarkDatabase(
       ON landmarks (eligible, importance_score DESC);
 
     CREATE TABLE IF NOT EXISTS landmark_scan_state (
-      id INTEGER PRIMARY KEY NOT NULL
-        CHECK (id = 1),
+      id INTEGER PRIMARY KEY NOT NULL CHECK (id = 1),
       center_latitude REAL NOT NULL,
       center_longitude REAL NOT NULL,
       radius_meters INTEGER NOT NULL,
@@ -101,6 +123,9 @@ export async function ensureLandmarkDatabase(
       unlocked_at TEXT NOT NULL,
       unlock_distance_meters REAL,
       gps_accuracy_meters REAL,
+      reward_xp INTEGER NOT NULL DEFAULT 0,
+      reward_coins INTEGER NOT NULL DEFAULT 0,
+      reward_sakura_shards INTEGER NOT NULL DEFAULT 0,
       FOREIGN KEY (landmark_id)
         REFERENCES landmarks (id)
         ON DELETE CASCADE,
@@ -112,6 +137,31 @@ export async function ensureLandmarkDatabase(
     CREATE INDEX IF NOT EXISTS idx_landmark_unlocks_date
       ON landmark_unlocks (unlocked_at DESC);
   `);
+
+  await ensureColumn(
+    database,
+    "landmark_unlocks",
+    "reward_xp",
+    "INTEGER NOT NULL DEFAULT 0",
+  );
+  await ensureColumn(
+    database,
+    "landmark_unlocks",
+    "reward_coins",
+    "INTEGER NOT NULL DEFAULT 0",
+  );
+  await ensureColumn(
+    database,
+    "landmark_unlocks",
+    "reward_sakura_shards",
+    "INTEGER NOT NULL DEFAULT 0",
+  );
+  await ensureColumn(
+    database,
+    "player_progress",
+    "sakura_shards",
+    "INTEGER NOT NULL DEFAULT 0",
+  );
 }
 
 export async function upsertLandmarks(
@@ -127,27 +177,12 @@ export async function upsertLandmarks(
       await database.runAsync(
         `
           INSERT INTO landmarks (
-            id,
-            source_type,
-            source_id,
-            name,
-            latitude,
-            longitude,
-            category,
-            importance_score,
-            importance_tier,
-            eligible,
-            wikidata_id,
-            wikipedia_tag,
-            official_url,
-            source_url,
-            tags_json,
-            first_seen_at,
-            last_seen_at
+            id, source_type, source_id, name, latitude, longitude,
+            category, importance_score, importance_tier, eligible,
+            wikidata_id, wikipedia_tag, official_url, source_url,
+            tags_json, first_seen_at, last_seen_at
           )
-          VALUES (
-            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
-          )
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           ON CONFLICT(id) DO UPDATE SET
             name = excluded.name,
             latitude = excluded.latitude,
@@ -192,14 +227,8 @@ export async function saveLandmarkScanState(
   await database.runAsync(
     `
       INSERT INTO landmark_scan_state (
-        id,
-        center_latitude,
-        center_longitude,
-        radius_meters,
-        fetched_at,
-        endpoint,
-        raw_candidate_count,
-        stored_candidate_count
+        id, center_latitude, center_longitude, radius_meters,
+        fetched_at, endpoint, raw_candidate_count, stored_candidate_count
       )
       VALUES (1, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
@@ -224,22 +253,21 @@ export async function saveLandmarkScanState(
 export async function getLandmarkScanState(
   database: SQLiteDatabase,
 ): Promise<LandmarkScanState | null> {
-  const row =
-    await database.getFirstAsync<ScanStateRow>(
-      `
-        SELECT
-          center_latitude,
-          center_longitude,
-          radius_meters,
-          fetched_at,
-          endpoint,
-          raw_candidate_count,
-          stored_candidate_count
-        FROM landmark_scan_state
-        WHERE id = 1
-        LIMIT 1
-      `,
-    );
+  const row = await database.getFirstAsync<ScanStateRow>(
+    `
+      SELECT
+        center_latitude,
+        center_longitude,
+        radius_meters,
+        fetched_at,
+        endpoint,
+        raw_candidate_count,
+        stored_candidate_count
+      FROM landmark_scan_state
+      WHERE id = 1
+      LIMIT 1
+    `,
+  );
 
   if (!row) {
     return null;
@@ -330,10 +358,112 @@ export async function listNearbyLandmarks(
         return a.distanceMeters - b.distanceMeters;
       }
 
-      return (
-        b.importanceScore - a.importanceScore
-      );
+      return b.importanceScore - a.importanceScore;
     });
+}
+
+export async function loadUnlockedLandmarkIds(
+  database: SQLiteDatabase,
+): Promise<Set<string>> {
+  await ensureLandmarkDatabase(database);
+
+  const rows = await database.getAllAsync<UnlockRow>(
+    "SELECT landmark_id FROM landmark_unlocks",
+  );
+
+  return new Set(rows.map((row) => row.landmark_id));
+}
+
+export async function unlockLandmark(
+  database: SQLiteDatabase,
+  landmark: LandmarkRecord,
+  options: {
+    distanceMeters: number;
+    gpsAccuracyMeters: number | null;
+    sessionId: string;
+  },
+): Promise<LandmarkUnlockResult | null> {
+  await ensureLandmarkDatabase(database);
+
+  const reward = rewardForLandmarkTier(
+    landmark.importanceTier,
+  );
+  const unlockedAt = new Date().toISOString();
+  let inserted = false;
+
+  await database.withTransactionAsync(async () => {
+    const result = await database.runAsync(
+      `
+        INSERT OR IGNORE INTO landmark_unlocks (
+          landmark_id,
+          session_id,
+          unlocked_at,
+          unlock_distance_meters,
+          gps_accuracy_meters,
+          reward_xp,
+          reward_coins,
+          reward_sakura_shards
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `,
+      landmark.id,
+      options.sessionId,
+      unlockedAt,
+      options.distanceMeters,
+      options.gpsAccuracyMeters,
+      reward.xp,
+      reward.coins,
+      reward.sakuraShards,
+    );
+
+    if (result.changes === 0) {
+      return;
+    }
+
+    inserted = true;
+
+    await database.runAsync(
+      `
+        UPDATE player_progress
+        SET
+          total_xp = total_xp + ?,
+          coins = coins + ?,
+          sakura_shards = sakura_shards + ?,
+          updated_at = ?
+        WHERE id = 1
+      `,
+      reward.xp,
+      reward.coins,
+      reward.sakuraShards,
+      unlockedAt,
+    );
+  });
+
+  if (!inserted) {
+    return null;
+  }
+
+  const totals =
+    await database.getFirstAsync<PlayerCurrencyRow>(
+      `
+        SELECT total_xp, coins, sakura_shards
+        FROM player_progress
+        WHERE id = 1
+        LIMIT 1
+      `,
+    );
+
+  return {
+    landmark,
+    reward,
+    totals: {
+      coins: totals?.coins ?? reward.coins,
+      sakuraShards:
+        totals?.sakura_shards ?? reward.sakuraShards,
+      xp: totals?.total_xp ?? reward.xp,
+    },
+    unlockedAt,
+  };
 }
 
 function mapLandmarkRow(
@@ -342,10 +472,7 @@ function mapLandmarkRow(
   let tags: Record<string, string> = {};
 
   try {
-    tags = JSON.parse(row.tags_json) as Record<
-      string,
-      string
-    >;
+    tags = JSON.parse(row.tags_json) as Record<string, string>;
   } catch {
     tags = {};
   }
@@ -369,4 +496,23 @@ function mapLandmarkRow(
     wikidataId: row.wikidata_id,
     wikipediaTag: row.wikipedia_tag,
   };
+}
+
+async function ensureColumn(
+  database: SQLiteDatabase,
+  table: string,
+  column: string,
+  definition: string,
+): Promise<void> {
+  const rows = await database.getAllAsync<{ name: string }>(
+    `PRAGMA table_info(${table})`,
+  );
+
+  if (rows.some((row) => row.name === column)) {
+    return;
+  }
+
+  await database.execAsync(
+    `ALTER TABLE ${table} ADD COLUMN ${column} ${definition};`,
+  );
 }

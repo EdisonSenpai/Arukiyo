@@ -9,16 +9,19 @@ import {
 import { useTranslation } from "react-i18next";
 
 import { COLORS, RADII } from "@/constants/theme";
-import { useNearbyLandmarks } from "@/hooks/useNearbyLandmarks";
+import type {
+  NearbyLandmarksState,
+} from "@/hooks/useNearbyLandmarks";
 import type { NearbyLandmark } from "@/lib/landmarks";
-import { useExplorationSession } from "@/providers/ExplorationSessionProvider";
 
-export function LandmarkScannerCard() {
+export function LandmarkScannerCard({
+  hasLocation,
+  state: landmarks,
+}: {
+  hasLocation: boolean;
+  state: NearbyLandmarksState;
+}) {
   const { i18n, t } = useTranslation();
-  const exploration = useExplorationSession();
-  const landmarks = useNearbyLandmarks(
-    exploration.currentLocation,
-  );
 
   const locale = i18n.resolvedLanguage ?? "en";
   const nearest = landmarks.eligibleLandmarks[0];
@@ -55,7 +58,7 @@ export function LandmarkScannerCard() {
         {t("landmark.engine.subtitle")}
       </Text>
 
-      {!exploration.currentLocation ? (
+      {!hasLocation ? (
         <View style={styles.notice}>
           <Ionicons
             color={COLORS.gold}
@@ -145,7 +148,7 @@ export function LandmarkScannerCard() {
 
         <Pressable
           disabled={
-            !exploration.currentLocation ||
+            !hasLocation ||
             landmarks.status === "loading"
           }
           onPress={() => {
@@ -153,7 +156,7 @@ export function LandmarkScannerCard() {
           }}
           style={({ pressed }) => [
             styles.refreshButton,
-            (!exploration.currentLocation ||
+            (!hasLocation ||
               landmarks.status === "loading") &&
               styles.disabled,
             pressed && styles.pressed,

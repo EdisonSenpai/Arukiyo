@@ -21,7 +21,10 @@ import { useTranslation } from "react-i18next";
 
 import { DiscoveryCelebration } from "@/components/DiscoveryCelebration";
 import { ExplorationMap } from "@/components/ExplorationMap";
+import { LandmarkDiscoveryCelebration } from "@/components/LandmarkDiscoveryCelebration";
 import { LandmarkScannerCard } from "@/components/LandmarkScannerCard";
+import { useLandmarkDiscovery } from "@/hooks/useLandmarkDiscovery";
+import { useNearbyLandmarks } from "@/hooks/useNearbyLandmarks";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { COLORS, RADII, SPACING } from "@/constants/theme";
 import { useExplorationSession } from "@/providers/ExplorationSessionProvider";
@@ -34,6 +37,15 @@ import {
 export default function ExploreScreen() {
   const { i18n, t } = useTranslation();
   const exploration = useExplorationSession();
+  const nearbyLandmarks = useNearbyLandmarks(
+    exploration.currentLocation,
+  );
+  const landmarkDiscovery = useLandmarkDiscovery({
+    activeSessionId: exploration.activeSessionId,
+    currentLocation: exploration.currentLocation,
+    isSessionActive: exploration.isSessionActive,
+    landmarks: nearbyLandmarks.eligibleLandmarks,
+  });
   const [recenterToken, setRecenterToken] = useState(0);
   const [celebration, setCelebration] = useState<{
     cellId: string;
@@ -193,13 +205,21 @@ export default function ExploreScreen() {
             cellFeatures={exploration.cellFeatures}
             currentLocation={exploration.currentLocation}
             homeLocation={exploration.homeLocation}
+            landmarks={nearbyLandmarks.eligibleLandmarks}
             recenterToken={recenterToken}
             routePoints={exploration.routePoints}
+            unlockedLandmarkIds={
+              landmarkDiscovery.unlockedLandmarkIds
+            }
           />
           <DiscoveryCelebration
             cellId={celebration?.cellId ?? null}
             onDismiss={() => setCelebration(null)}
             rewarded={celebration?.rewarded ?? false}
+          />
+          <LandmarkDiscoveryCelebration
+            onDismiss={landmarkDiscovery.dismissLastUnlock}
+            unlock={landmarkDiscovery.lastUnlock}
           />
         </View>
 
@@ -384,7 +404,10 @@ export default function ExploreScreen() {
             </View>
           ) : null}
 
-          <LandmarkScannerCard />
+          <LandmarkScannerCard
+            hasLocation={exploration.currentLocation !== null}
+            state={nearbyLandmarks}
+          />
 
           <View style={styles.progressCard}>
             <View style={styles.progressHeader}>
