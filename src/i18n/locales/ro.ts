@@ -109,7 +109,7 @@ export const ro = {
     loading: "Se deschide lumea Arukiyo…",
     failureTitle: "Harta nu s-a încărcat",
     failureCopy:
-      "Verifică internetul. Stage 2C folosește încă tile-urile demo MapLibre.",
+      "Verifică internetul. Arukiyo folosește hărți vectoriale OpenFreeMap bazate pe date OpenStreetMap.",
     fog: "Ceață",
     discovered: "Descoperit",
     current: "Curent",
@@ -117,9 +117,9 @@ export const ro = {
     recenter: "Recentrează harta",
   },
   explore: {
-    eyebrow: "Stage 2C",
+    eyebrow: "Stage 4B",
     title: "Explorează",
-    subtitle: "Hartă mai clară, fog of war persistent și marker Home real.",
+    subtitle: "Străzi și clădiri detaliate, cu fog of war peste harta reală.",
     sessionActive: "Explorare activă",
     gpsReady: "GPS pregătit",
     gpsInactive: "GPS inactiv",
