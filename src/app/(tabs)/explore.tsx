@@ -157,7 +157,7 @@ export default function ExploreScreen() {
       <View style={styles.page}>
         <View style={styles.header}>
           <ScreenHeader
-            eyebrow={t("session.eyebrow")}
+            eyebrow={t("tabs.explore")}
             subtitle={t("session.exploreSubtitle")}
             title={t("explore.title")}
             trailing={

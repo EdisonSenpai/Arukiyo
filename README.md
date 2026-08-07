@@ -10,7 +10,7 @@
 
 A Japanese-inspired mobile exploration game that turns real-world movement into progress, discovery, collections, and adventure.
 
-[![Development Stage](https://img.shields.io/badge/stage-3D%20completed-D85B4B?style=for-the-badge)](#development-progress)
+[![Development Stage](https://img.shields.io/badge/stage-4B%20completed-D85B4B?style=for-the-badge)](#development-progress)
 [![Android Preview](https://img.shields.io/badge/Android-standalone%20preview-3DDC84?style=for-the-badge&logo=android&logoColor=white)](#android-build-variants)
 [![Expo](https://img.shields.io/badge/Expo-SDK%2057-000020?style=for-the-badge&logo=expo&logoColor=white)](#technology)
 [![React Native](https://img.shields.io/badge/React%20Native-0.86-61DAFB?style=for-the-badge&logo=react&logoColor=black)](#technology)
@@ -28,7 +28,7 @@ Arukiyo is built around one simple idea:
 
 The application combines real-world walking, location-based discovery, Japanese-inspired visual design, persistent fog of war, journey tracking, progression, daily challenges, collectibles, and future social exploration.
 
-Users begin from a private Home area and reveal new H3 cells as they move. Future stages will turn landmarks, museums, monuments, parks, historic buildings, and other points of interest into collectible discoveries with information, stamps, badges, rare rewards, and journal entries.
+Users begin from a private Home area and reveal new H3 cells as they move. The next landmark stages will turn museums, monuments, historic buildings, civic sites, cultural venues, and other important places into collectible discoveries with information, rewards, journal entries, source links, and future badges.
 
 ## Current experience
 
@@ -37,9 +37,17 @@ The current Android build includes:
 - Home, Explore, Quests, Journal, Profile, Settings, Language, History, Summary, and Shop screens;
 - real foreground GPS positioning;
 - an encrypted private Home location stored locally;
-- MapLibre rendering with H3 exploration cells;
-- persistent discovered cells and fog-of-war state in SQLite;
+- MapLibre rendering over an OpenFreeMap street/building basemap;
+- OpenFreeMap Liberty as the primary style with Positron fallback;
+- H3-based exploration cells at resolution 11;
+- a global opaque fog mask that prevents zoom-out from revealing unexplored streets;
+- a distinct known Home area that is visible without being counted as explored;
+- permanent cut-outs for previously discovered cells, including cells far away from the current position;
+- a 19-cell local Home area (`HOME_ZONE_RADIUS = 2`);
+- current-cell, discovered-cell, Home-area, and route visual states;
+- persistent discovered cells and exploration state in SQLite;
 - foreground exploration sessions with accepted and filtered GPS points;
+- session state preserved while navigating between Explore, History, and summaries;
 - a live route line, distance, duration, GPS-point, and new-cell counters;
 - GPS filtering for inaccurate, duplicated, stale, and implausible points;
 - persistent session summaries, route points, and local history;
@@ -63,6 +71,7 @@ Arukiyo is planned as a real-world exploration RPG with:
 - exploration percentages for Home area, neighbourhood, city, region, country, continent, and world;
 - roads, buildings, neighbourhoods, and map areas revealed through real movement;
 - collectible landmarks with history, rarity, rewards, and equippable badges;
+- verified links to official sources, Wikipedia, Wikidata, or other trustworthy references where available;
 - XP, levels, explorer ranks, coins, Sakura Shards, streaks, and achievements;
 - daily, weekly, monthly, seasonal, and landmark-based missions;
 - walking, discovery, history, photography, and travel progression paths;
@@ -82,13 +91,17 @@ Arukiyo is planned as a real-world exploration RPG with:
 | Stage 0 | ✅ Complete | Windows environment, Expo project, Android SDK, JDK 17, physical-device build |
 | Stage 1A | ✅ Complete | Visual identity, tabs, Home, Quests, Journal, Profile, and Shop prototypes |
 | Stage 2A | ✅ Complete | Foreground GPS, encrypted Home location, permissions, and location accuracy |
-| Stage 2B | ✅ Complete | MapLibre, H3 cells, SQLite persistence, live exploration, and fog of war |
+| Stage 2B | ✅ Complete | MapLibre, H3 cells, SQLite persistence, live exploration, and initial fog of war |
 | Stage 2C | ✅ Complete | English-first localization, Romanian and Japanese, map polish, Home marker |
 | Stage 3A | ✅ Complete | Persistent sessions, live route, GPS filtering, summaries, and history |
 | Stage 3B | ✅ Complete | XP, levels, coins, reward rules, daily bonuses, dashboards, and wallet |
 | Stage 3C | ✅ Complete | Discovery celebrations, haptics, animated rewards, route previews, Journey Stamps |
 | Stage 3D | ✅ Complete | Hanko Path — Sakura brand, Android variants, EAS Preview APK, standalone field validation |
-| Stage 4 | ⏭ Next | Session-state fix, richer basemap, landmarks, collections, badges, achievements, Sakura Shards |
+| Stage 4A | ✅ Complete | Active exploration session ownership moved above navigation so sessions survive normal screen changes |
+| Stage 4B | ✅ Complete | Richer OpenFreeMap basemap, global opaque fog mask, known Home area, permanent discovered-cell reveal |
+| Stage 4C1 | ⏭ Next | Nearby landmark acquisition, importance classification, normalized local cache, unlock eligibility |
+| Stage 4C2 | Planned | Landmark map markers, proximity unlocks, discovery celebration, rewards, Sakura Shards |
+| Stage 4C3 | Planned | Journal landmark collection, detail pages, history, quick facts, images, and source links |
 | Stage 5 | Planned | Accounts, synchronization, backend, friends, presence, shared progress, teams |
 
 > Arukiyo is under active development and is not yet a production release.
@@ -99,16 +112,46 @@ Arukiyo converts GPS coordinates into H3 hexagonal cells. Entering a sufficientl
 
 | Map state | Meaning |
 | --- | --- |
-| Dark hexagon | Undiscovered fog-of-war cell |
-| Pink hexagon | Previously discovered cell |
-| Gold hexagon | Current cell |
+| Opaque ink fog | Unexplored world; basemap details are intentionally hidden |
+| Matcha Home cells | Known Home area; visible but not automatically counted as explored |
+| Sakura cells | Previously discovered territory |
+| Gold cell | Current H3 cell |
 | Green marker | Current GPS position |
-| Red marker | Private Home location |
-| Red route line | Accepted movement during the current session |
+| Vermilion Home marker | Private Home position in the local development UI |
+| Vermilion route line | Accepted movement during the current session |
 
-The current map style is intentionally temporary. It proves GPS, H3, fog-of-war, and route rendering, but it does not yet provide the street, building, neighbourhood, and point-of-interest detail expected from the final product. Stage 4 will replace the development basemap while keeping fog as a separate exploration layer.
+### Global fog of war
 
-The exact Home coordinate is stored separately through Expo Secure Store and is not uploaded to a server in the current implementation.
+Stage 4B separates the fog system from the finite local H3 display.
+
+A global polygon mask covers unexplored map content with fully opaque ink. Revealed Home, current, and discovered H3 polygons are cut out of the mask so the underlying street/building basemap is visible only where Arukiyo permits it.
+
+This prevents a user from zooming out beyond a finite H3 ring and seeing unexplored roads, buildings, neighbourhood names, or points of interest.
+
+Previously discovered H3 cells are included in the reveal collection even when they are far from the current GPS position. A journey in another city therefore does not cause earlier explored territory to become hidden again.
+
+### Home area is known, not explored
+
+The current Home zone uses H3 radius 2, creating 19 cells around the private starting point.
+
+Home cells are visually readable from the beginning, but they do **not** enter the explored-cell database simply because they belong to the Home area. They only contribute to exploration completion after the user actually reaches and records them.
+
+This keeps two concepts separate:
+
+```text
+known Home territory != explored territory
+```
+
+## Basemap
+
+The Stage 4B development basemap uses OpenFreeMap:
+
+- primary style: `https://tiles.openfreemap.org/styles/liberty`;
+- fallback style: `https://tiles.openfreemap.org/styles/positron`.
+
+The basemap provides street, building, neighbourhood, and POI context while the Arukiyo fog remains a separate game layer above it.
+
+Map data and third-party styles remain subject to their own attribution and licensing requirements.
 
 ## Session tracking and GPS validation
 
@@ -123,11 +166,54 @@ A point can be filtered when:
 
 Filtered points do not increase route distance or create false route segments.
 
-### Known field-test issue
+### Session continuity
 
-A Stage 3D field test revealed that navigating from an active Explore session to Session History and then returning can lose the in-memory active-session state. The current UI can return with the session appearing inactive and pending session counters reset.
+Stage 4A moved active-session ownership into an application-level provider. Navigating from Explore to Session History or an older summary and then returning no longer destroys the active in-memory session state.
 
-The first Stage 4 task is to move active-session ownership above the Explore screen, restore it from SQLite, and make navigation incapable of silently abandoning a running session.
+Distance, duration, route points, accepted/rejected GPS points, and newly discovered cells remain attached to the running session during normal navigation.
+
+Background tracking is still intentionally separate and remains planned in issue #5.
+
+## Stage 4C landmark roadmap
+
+Stage 4C begins the landmark system.
+
+### Stage 4C1 — Landmark Engine
+
+The first landmark stage is planned to:
+
+- request nearby candidate places from OpenStreetMap/Overpass or an equivalent OSM data path;
+- consider tags such as `historic`, `heritage`, `tourism`, `museum`, `memorial`, civic/cultural buildings, `wikidata`, `wikipedia`, and official website fields;
+- normalize nodes, ways, and relations into one Arukiyo landmark model;
+- score candidates so ordinary apartment blocks, supermarkets, and routine businesses do not become collectible landmarks;
+- cache nearby candidates locally in SQLite;
+- store stable source identifiers and metadata needed for later enrichment;
+- determine whether a candidate is eligible for proximity-based discovery.
+
+### Stage 4C2 — Landmark Discovery
+
+Planned discovery behaviour:
+
+- a landmark becomes eligible only when the player physically approaches it with acceptable GPS quality;
+- large buildings can use geometry-aware distance instead of requiring the user to reach an arbitrary centre point;
+- successful discovery triggers Arukiyo visual feedback and haptics;
+- the discovery is persisted once and cannot be rewarded repeatedly;
+- landmark rewards can include XP, coins, Journey Stamps, and the first implementation of Sakura Shards.
+
+### Stage 4C3 — Journal and historical information
+
+Discovered landmarks are planned to appear in the Journal with:
+
+- name, category, location, rarity/importance, and discovery date;
+- photograph where a licensed/reusable source is available;
+- concise overview;
+- detailed history and quick facts when reliable source data exists;
+- discovery-session information;
+- official website link where available;
+- Wikipedia/Wikidata links when present;
+- clear source attribution.
+
+Arukiyo should prefer factual source-backed landmark content rather than inventing historical details when trustworthy sources are unavailable.
 
 ## Progression and currencies
 
@@ -146,7 +232,7 @@ A meaningful completed session contains at least 50 metres of validated movement
 
 Every rewarded session receives one unique reward event, so opening the same summary again cannot grant the reward twice.
 
-### Sakura Shards — planned for Stage 4
+### Sakura Shards — planned for Stage 4C
 
 Sakura Shards will be a rarer exploration currency, separate from ordinary coins.
 
@@ -177,8 +263,6 @@ Rank names are localized in English, Romanian, and Japanese.
 
 ## Android build variants
 
-Stage 3D introduced three installable identities:
-
 | Variant | Name | Android package | Purpose |
 | --- | --- | --- | --- |
 | Development | Arukiyo Dev | `com.eduarddonea.arukiyo.dev` | Fast development through Metro and Expo Dev Client |
@@ -187,7 +271,7 @@ Stage 3D introduced three installable identities:
 
 Development and Preview can remain installed on the same Android device.
 
-The Preview profile uses EAS internal distribution, a managed Android keystore, and an incremented Android version code. The Stage 3D Preview APK was successfully installed and tested without depending on Metro.
+The Preview profile uses EAS internal distribution and managed Android credentials. The standalone Preview APK has been tested without depending on Metro.
 
 ## Hanko Path — Sakura identity
 
@@ -199,28 +283,21 @@ The selected brand combines:
 - one restrained sakura blossom;
 - ink green, paper cream, vermilion, sakura pink, and warm gold.
 
-Included assets:
-
-- Android launcher icon;
-- adaptive foreground icon;
-- Android monochrome icon;
-- light and dark splash marks;
-- horizontal light and dark wordmarks;
-- standalone brand mark and brand brief.
+Included assets include Android launcher/adaptive/monochrome icons, splash marks, wordmarks, the standalone brand mark, and the brand brief.
 
 ## Background exploration roadmap
 
-Background tracking is intentionally not enabled yet. It will be introduced only after active foreground sessions remain stable across navigation and process changes.
+Background tracking is intentionally not enabled yet. The open roadmap item is [#5 — Add background exploration with persistent session notification](https://github.com/EdisonSenpai/Arukiyo/issues/5).
 
 The planned Android experience includes:
 
-- a user-controlled background exploration setting;
+- explicit user opt-in;
 - a persistent foreground-service notification while a session is active;
-- live distance and duration in the notification;
-- an action to return directly to the active session;
-- an action to stop and finalize the session from the notification;
-- recovery after the application UI is closed;
-- clear permission explanations and battery-use guidance;
+- live duration and distance in the notification;
+- tap to return directly to the active session;
+- an action to stop and finalize the session;
+- recovery after UI/process recreation;
+- clear permission and battery-use explanations;
 - no background location sharing by default.
 
 ## Future social layer
@@ -256,12 +333,14 @@ The selected language is stored locally and restored when the application is reo
 | Android build | Android SDK 36, Gradle, JDK 17 |
 | Standalone builds | EAS Build internal distribution |
 | Map rendering | MapLibre React Native |
+| Basemap styles | OpenFreeMap Liberty + Positron fallback |
 | Geographic grid | H3 |
 | Local structured storage | Expo SQLite |
 | Sensitive local storage | Expo Secure Store |
 | Foreground location | Expo Location |
 | Motion and feedback | React Native Reanimated + Expo Haptics |
 | Localization | i18next + react-i18next + Expo Localization |
+| Planned landmark data | OpenStreetMap / Overpass, Wikidata, Wikimedia/Wikipedia, official sources |
 | Planned background execution | Expo Location + Expo Task Manager + Android foreground service |
 | Planned notifications | Expo Notifications and Android notification actions |
 | Planned backend | FastAPI |
@@ -272,14 +351,18 @@ The selected language is stored locally and restored when the application is reo
 
 ```mermaid
 flowchart TD
-    UI[React Native UI\nExpo Router] --> EXP[Exploration Session Engine]
-    EXP --> GPS[Expo Location]
-    EXP --> FILTER[GPS Accuracy and Movement Filter]
+    UI[React Native UI\nExpo Router] --> SESSION[Exploration Session Provider]
+    SESSION --> GPS[Expo Location]
+    SESSION --> FILTER[GPS Accuracy and Movement Filter]
     FILTER --> ROUTE[Live MapLibre Route]
     FILTER --> GRID[H3 Geographic Grid]
     GRID --> CELLS[(Explored Cells\nExpo SQLite)]
-    GRID --> DISCOVERY[Discovery Celebration\nReanimated + Haptics]
-    EXP --> SESSIONS[(Sessions and Route Points\nExpo SQLite)]
+    GRID --> MASK[Global Fog Mask]
+    BASE[OpenFreeMap Basemap] --> MAP[MapLibre Map]
+    MASK --> MAP
+    ROUTE --> MAP
+    GRID --> DISCOVERY[Cell Discovery Feedback\nReanimated + Haptics]
+    SESSION --> SESSIONS[(Sessions and Route Points\nExpo SQLite)]
     SESSIONS --> SUMMARY[Route Preview and Journey Stamps]
     SESSIONS --> REWARDS[Reward Calculation]
     REWARDS --> EVENTS[(Reward Events\nExpo SQLite)]
@@ -287,7 +370,10 @@ flowchart TD
     PLAYER --> DASH[Home, Profile, Shop Wallet]
     GPS --> HOME[Private Home Location]
     HOME --> SECURE[Expo Secure Store]
-    EXP -. planned .-> BG[Background Task + Foreground Service]
+    GPS -. Stage 4C .-> LANDMARKS[Nearby Landmark Engine]
+    LANDMARKS -. planned .-> OSM[OSM / Overpass]
+    LANDMARKS -. planned .-> SOURCES[Wikidata / Wikipedia / Official Sources]
+    SESSION -. planned .-> BG[Background Task + Foreground Service]
     BG -. planned .-> NOTICE[Persistent Session Notification]
     CELLS -. future sync .-> API[FastAPI Backend]
     SESSIONS -. future sync .-> API
@@ -304,12 +390,12 @@ Arukiyo/
 │   └── brand/               Hanko Path — Sakura identity files
 ├── scripts/                 Build, variant, and compatibility helpers
 ├── src/
-│   ├── app/                 Expo Router screens, dashboards, history, and summaries
-│   ├── components/          MapLibre, celebrations, counters, and interface pieces
+│   ├── app/                 Expo Router screens, dashboards, history, summaries
+│   ├── components/          MapLibre, fog, celebrations, counters, interface pieces
 │   ├── constants/           Theme, exploration, and progression configuration
 │   ├── hooks/               Exploration, progression, and accessibility state
 │   ├── i18n/                English, Romanian, and Japanese resources
-│   ├── lib/                 H3, SQLite, GPS filtering, rewards, haptics, and secure storage
+│   ├── lib/                 H3, SQLite, fog geometry, GPS filtering, rewards, haptics
 │   └── providers/           Application-level state providers
 ├── app.config.js            Development, Preview, and Production variant identity
 ├── app.json                 Shared Expo configuration and EAS project link
@@ -367,48 +453,54 @@ powershell -ExecutionPolicy Bypass `
   -File .\scripts\build-preview.ps1
 ```
 
-## Stage 3D validation
+## Stage 4B validation
 
-The Stage 3D standalone field test confirmed:
+Stage 4B has been tested on the Android development build with the following checks:
 
-- the Preview APK installs independently from Arukiyo Dev;
-- the Preview application starts without Metro;
-- foreground GPS tracking records accepted and filtered points;
-- real routes and journey summaries persist locally;
-- new-cell, XP, coin, and Journey Stamp rewards are displayed;
-- route summaries render start and finish markers;
-- branding, adaptive icon, and splash assets are included;
-- TypeScript, ESLint, Expo Doctor, and whitespace checks pass.
+- OpenFreeMap streets/buildings render beneath the Arukiyo exploration layer;
+- Home, discovered, current, and fog states remain visually distinct;
+- unexplored territory becomes fully opaque instead of exposing the basemap;
+- zooming out does not reveal streets beyond the explored/known cut-outs;
+- the Home area uses 19 known cells while exploration completion still depends on actual discovered cells;
+- previously discovered cells remain revealable even when not part of the current local H3 ring;
+- `npm run typecheck` passes;
+- `npm run lint` passes;
+- `npx expo-doctor` reports 20/20 checks passed;
+- `git diff --check` passes.
 
-The same field test identified the active-session navigation issue documented above.
+A non-blocking MapLibre native warning (`Invalid geometry in line layer`) can currently appear during map rendering even though the map remains functional and all project validation checks pass. It remains under observation for a later geometry/rendering cleanup if it becomes visually significant.
 
 ## Screenshot gallery
 
-Privacy-safe gallery composites were prepared from real OnePlus 10T screenshots of the standalone Preview build. The Explore screenshot containing the private Home marker is intentionally excluded from public repository documentation.
+Privacy-safe gallery composites are prepared from real Android screenshots. Explore screenshots containing the exact private Home marker are intentionally excluded from public repository documentation.
 
-Planned public panels:
+Planned public panels include:
 
-- **Overview** — Home progression, Quests, and Journal;
-- **Progression** — Profile, real route summary, rewards, and Journey Stamps.
+- Home progression, Quests, and Journal;
+- Profile, route summary, rewards, and Journey Stamps;
+- privacy-safe fog-of-war and future landmark-discovery views.
 
 ## Privacy and safety principles
 
 - Home is sensitive information;
 - exact Home coordinates are encrypted locally;
 - public interfaces will use an approximate Home area;
+- Home visibility on the development map must not imply public sharing;
 - background tracking will require explicit opt-in;
 - an active background session will remain visibly indicated;
 - live location sharing will never be enabled by default;
 - private property and unsafe areas must not become mandatory objectives;
+- landmark discovery must not encourage trespassing or unsafe access;
 - users will be able to delete local exploration and location data.
 
 ## Known development notes
 
-- Navigating to History during an active session can currently lose the active in-memory session state.
-- The development MapLibre style does not yet show the final street, building, and POI detail.
-- Background exploration and the persistent Android session notification are planned, not implemented.
-- GPS and reward thresholds are initial development values and require more field tuning.
+- Background exploration and the persistent Android session notification remain planned in issue #5.
+- The current OpenFreeMap styles are suitable for development but map-provider/licensing/availability decisions must be reviewed before production release.
+- MapLibre may currently emit a non-blocking `Invalid geometry in line layer` warning during map rendering.
+- GPS and reward thresholds are development values and require additional field tuning.
 - Shop prices and wallet visibility are connected, but purchases, inventory, and Sakura Shards are not implemented yet.
+- Landmark discovery, historical content, collections, and source enrichment begin in Stage 4C.
 - `h3-js` needs a Hermes compatibility patch applied automatically after `npm install`.
 - Gradle is pinned to Java 17 through the project helper script.
 - Do not run `npm audit fix --force` without reviewing Expo and React Native compatibility.
@@ -417,7 +509,7 @@ Planned public panels:
 
 Arukiyo is currently developed as a focused personal project. Issues and implementation discussions may be opened as it moves toward public testing.
 
-Please do not submit large architectural changes without prior discussion, because the mobile, geographic, progression, notification, and backend systems are introduced incrementally by stage.
+Please do not submit large architectural changes without prior discussion, because the mobile, geographic, progression, landmark, notification, and backend systems are introduced incrementally by stage.
 
 ## Author
 

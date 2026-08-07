@@ -109,7 +109,7 @@ export const en = {
     loading: "Opening the Arukiyo world…",
     failureTitle: "The map could not load",
     failureCopy:
-      "Check your internet connection. Stage 2C still uses MapLibre demo tiles.",
+      "Check your connection. Arukiyo uses OpenFreeMap vector tiles based on OpenStreetMap data.",
     fog: "Fog",
     discovered: "Discovered",
     current: "Current",
@@ -117,9 +117,9 @@ export const en = {
     recenter: "Recenter map",
   },
   explore: {
-    eyebrow: "Stage 2C",
+    eyebrow: "Stage 4B",
     title: "Explore",
-    subtitle: "A clearer map, persistent fog of war, and a real Home marker.",
+    subtitle: "Detailed streets and buildings with fog of war layered above the real map.",
     sessionActive: "Exploration active",
     gpsReady: "GPS ready",
     gpsInactive: "GPS inactive",

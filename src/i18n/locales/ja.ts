@@ -109,7 +109,7 @@ export const ja = {
     loading: "Arukiyoの世界を開いています…",
     failureTitle: "地図を読み込めませんでした",
     failureCopy:
-      "インターネット接続を確認してください。Stage 2CではMapLibreのデモタイルを使用しています。",
+      "接続を確認してください。ArukiyoはOpenStreetMapデータを使用したOpenFreeMapのベクター地図を利用します。",
     fog: "未探索",
     discovered: "発見済み",
     current: "現在地",
@@ -117,9 +117,9 @@ export const ja = {
     recenter: "現在地に戻る",
   },
   explore: {
-    eyebrow: "Stage 2C",
+    eyebrow: "Stage 4B",
     title: "探索",
-    subtitle: "見やすい地図、保存される未探索エリア、本物のHomeマーカー。",
+    subtitle: "詳細な道路と建物の上に、探索用の未探索エリアを重ねて表示します。",
     sessionActive: "探索中",
     gpsReady: "GPS準備完了",
     gpsInactive: "GPS無効",

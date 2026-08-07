@@ -1,3 +1,4 @@
+import { Ionicons } from "@expo/vector-icons";
 import {
   Camera,
   GeoJSONSource,
@@ -5,7 +6,6 @@ import {
   Map,
   Marker,
 } from "@maplibre/maplibre-react-native";
-import { Ionicons } from "@expo/vector-icons";
 import type * as Location from "expo-location";
 import {
   useEffect,
@@ -24,12 +24,16 @@ import { useTranslation } from "react-i18next";
 
 import {
   BUCHAREST_CENTER,
+  MAP_STYLE_FALLBACK_URL,
   MAP_STYLE_URL,
 } from "@/constants/exploration";
 import { COLORS, RADII } from "@/constants/theme";
 import {
+  applyHomeZoneState,
   type CellFeatureCollection,
+  createFogMaskFeatureCollection,
   createPointFeatureCollection,
+  locationToCell,
   type LngLat,
 } from "@/lib/exploration-grid";
 import type { HomeLocation } from "@/lib/home-location";
@@ -55,6 +59,8 @@ export function ExplorationMap({
 }: ExplorationMapProps) {
   const { t } = useTranslation();
   const cameraRef = useRef<any>(null);
+  const [activeStyleUrl, setActiveStyleUrl] =
+    useState(MAP_STYLE_URL);
   const [isMapReady, setIsMapReady] = useState(false);
   const [mapFailed, setMapFailed] = useState(false);
 
@@ -88,9 +94,33 @@ export function ExplorationMap({
     [currentLocation],
   );
 
+  const homeCell = useMemo(
+    () =>
+      homeLocation
+        ? locationToCell(
+            homeLocation.latitude,
+            homeLocation.longitude,
+          )
+        : null,
+    [homeLocation],
+  );
+
+  const displayCellFeatures = useMemo(
+    () => applyHomeZoneState(cellFeatures, homeCell),
+    [cellFeatures, homeCell],
+  );
+
   const routeFeatures = useMemo(
     () => createRouteFeatureCollection(routePoints),
     [routePoints],
+  );
+
+  const fogMaskFeatures = useMemo(
+    () =>
+      createFogMaskFeatureCollection(
+        displayCellFeatures,
+      ),
+    [displayCellFeatures],
   );
 
   useEffect(() => {
@@ -101,7 +131,7 @@ export function ExplorationMap({
     cameraRef.current?.easeTo({
       center: target,
       duration: 850,
-      zoom: currentLocation || homeLocation ? 16.3 : 12,
+      zoom: currentLocation || homeLocation ? 16.6 : 12,
     });
   }, [
     currentLocation,
@@ -111,17 +141,29 @@ export function ExplorationMap({
     target,
   ]);
 
+  const handleMapFailure = () => {
+    if (activeStyleUrl === MAP_STYLE_URL) {
+      setIsMapReady(false);
+      setMapFailed(false);
+      setActiveStyleUrl(MAP_STYLE_FALLBACK_URL);
+      return;
+    }
+
+    setMapFailed(true);
+  };
+
   return (
     <View style={styles.container}>
       <Map
+        key={activeStyleUrl}
         androidView="texture"
         attribution
         attributionPosition={{ bottom: 8, left: 8 }}
         compass
         compassPosition={{ top: 12, right: 12 }}
         logo={false}
-        mapStyle={MAP_STYLE_URL}
-        onDidFailLoadingMap={() => setMapFailed(true)}
+        mapStyle={activeStyleUrl}
+        onDidFailLoadingMap={handleMapFailure}
         onDidFinishLoadingMap={() => {
           setIsMapReady(true);
           setMapFailed(false);
@@ -133,16 +175,35 @@ export function ExplorationMap({
         <Camera
           initialViewState={{
             center: target,
-            zoom: currentLocation || homeLocation ? 16.3 : 12,
+            zoom: currentLocation || homeLocation ? 16.6 : 12,
           }}
-          maxZoom={19}
+          maxZoom={20}
           minZoom={4}
           ref={cameraRef}
         />
 
-        {cellFeatures.features.length > 0 ? (
+        {displayCellFeatures.features.length > 0 ? (
           <GeoJSONSource
-            data={cellFeatures as never}
+            data={fogMaskFeatures as never}
+            id="arukiyo-global-fog-mask"
+          >
+            <Layer
+              id="arukiyo-global-fog-fill"
+              paint={
+                {
+                  "fill-color": COLORS.ink,
+                  "fill-opacity": 1,
+                } as never
+              }
+              source="arukiyo-global-fog-mask"
+              type="fill"
+            />
+          </GeoJSONSource>
+        ) : null}
+
+        {displayCellFeatures.features.length > 0 ? (
+          <GeoJSONSource
+            data={displayCellFeatures as never}
             id="arukiyo-exploration-grid"
           >
             <Layer
@@ -154,6 +215,8 @@ export function ExplorationMap({
                     ["get", "state"],
                     "explored",
                     COLORS.sakura,
+                    "home",
+                    COLORS.matcha,
                     "current",
                     COLORS.gold,
                     COLORS.ink,
@@ -162,10 +225,12 @@ export function ExplorationMap({
                     "match",
                     ["get", "state"],
                     "explored",
-                    0.06,
+                    0.025,
+                    "home",
+                    0.16,
                     "current",
-                    0.22,
-                    0.48,
+                    0.18,
+                    0.1,
                   ],
                 } as never
               }
@@ -181,17 +246,33 @@ export function ExplorationMap({
                     ["get", "state"],
                     "explored",
                     COLORS.sakura,
+                    "home",
+                    COLORS.matcha,
                     "current",
                     COLORS.gold,
-                    "rgba(255,255,255,0.48)",
+                    "rgba(255,255,255,0.28)",
                   ],
-                  "line-opacity": 0.95,
+                  "line-opacity": [
+                    "match",
+                    ["get", "state"],
+                    "explored",
+                    0.72,
+                    "home",
+                    0.78,
+                    "current",
+                    1,
+                    0.24,
+                  ],
                   "line-width": [
                     "match",
                     ["get", "state"],
                     "current",
-                    3,
-                    1.2,
+                    2.8,
+                    "explored",
+                    1.1,
+                    "home",
+                    1,
+                    0.65,
                   ],
                 } as never
               }
@@ -216,8 +297,8 @@ export function ExplorationMap({
               }
               paint={
                 {
-                  "line-color": "rgba(23,35,31,0.36)",
-                  "line-width": 8,
+                  "line-color": "rgba(23,35,31,0.42)",
+                  "line-width": 9,
                 } as never
               }
               source="arukiyo-session-route"
@@ -326,11 +407,37 @@ export function ExplorationMap({
           <Text style={styles.failureText}>
             {t("map.failureCopy")}
           </Text>
+          <Pressable
+            onPress={() => {
+              setMapFailed(false);
+              setIsMapReady(false);
+              setActiveStyleUrl(MAP_STYLE_URL);
+            }}
+            style={({ pressed }) => [
+              styles.retryButton,
+              pressed && styles.pressed,
+            ]}
+          >
+            <Ionicons
+              color={COLORS.white}
+              name="refresh"
+              size={18}
+            />
+            <Text style={styles.retryText}>
+              {t("explore.reset")}
+            </Text>
+          </Pressable>
         </View>
       ) : null}
 
       <View style={styles.legend}>
         <LegendDot color={COLORS.ink} label={t("map.fog")} />
+        {homeLocation ? (
+          <LegendDot
+            color={COLORS.matcha}
+            label={t("explore.localHomeArea")}
+          />
+        ) : null}
         <LegendDot
           color={COLORS.sakura}
           label={t("map.discovered")}
@@ -353,7 +460,7 @@ export function ExplorationMap({
           cameraRef.current?.easeTo({
             center: target,
             duration: 700,
-            zoom: 16.3,
+            zoom: 16.6,
           });
         }}
         style={({ pressed }) => [
@@ -421,6 +528,21 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 18,
     textAlign: "center",
+  },
+  retryButton: {
+    alignItems: "center",
+    backgroundColor: COLORS.ink,
+    borderRadius: RADII.medium,
+    flexDirection: "row",
+    gap: 7,
+    marginTop: 5,
+    paddingHorizontal: 16,
+    paddingVertical: 11,
+  },
+  retryText: {
+    color: COLORS.white,
+    fontSize: 11,
+    fontWeight: "900",
   },
   legend: {
     alignItems: "center",
