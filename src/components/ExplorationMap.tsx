@@ -28,6 +28,8 @@ import {
   MAP_STYLE_URL,
 } from "@/constants/exploration";
 import { COLORS, RADII } from "@/constants/theme";
+import { LandmarkMapPin } from "@/components/LandmarkMapPin";
+import { selectLandmarksForMap } from "@/lib/landmark-map-selection";
 import {
   applyHomeZoneState,
   type CellFeatureCollection,
@@ -37,6 +39,7 @@ import {
   type LngLat,
 } from "@/lib/exploration-grid";
 import type { HomeLocation } from "@/lib/home-location";
+import type { NearbyLandmark } from "@/lib/landmarks";
 import {
   createRouteFeatureCollection,
   type SessionPoint,
@@ -46,16 +49,20 @@ type ExplorationMapProps = {
   cellFeatures: CellFeatureCollection;
   currentLocation: Location.LocationObject | null;
   homeLocation: HomeLocation | null;
+  landmarks: NearbyLandmark[];
   recenterToken: number;
   routePoints: SessionPoint[];
+  unlockedLandmarkIds: Set<string>;
 };
 
 export function ExplorationMap({
   cellFeatures,
   currentLocation,
   homeLocation,
+  landmarks,
   recenterToken,
   routePoints,
+  unlockedLandmarkIds,
 }: ExplorationMapProps) {
   const { t } = useTranslation();
   const cameraRef = useRef<any>(null);
@@ -121,6 +128,11 @@ export function ExplorationMap({
         displayCellFeatures,
       ),
     [displayCellFeatures],
+  );
+
+  const visibleLandmarks = useMemo(
+    () => selectLandmarksForMap(landmarks),
+    [landmarks],
   );
 
   useEffect(() => {
@@ -323,6 +335,29 @@ export function ExplorationMap({
             />
           </GeoJSONSource>
         ) : null}
+
+        {visibleLandmarks.map((landmark, index) => (
+          <Marker
+            anchor="bottom"
+            id={`arukiyo-landmark-${landmark.id.replace(
+              /:/g,
+              "-",
+            )}`}
+            key={landmark.id}
+            lngLat={[
+              landmark.longitude,
+              landmark.latitude,
+            ]}
+          >
+            <LandmarkMapPin
+              landmark={landmark}
+              primary={index === 0}
+              unlocked={unlockedLandmarkIds.has(
+                landmark.id,
+              )}
+            />
+          </Marker>
+        ))}
 
         {homeLocation ? (
           <Marker

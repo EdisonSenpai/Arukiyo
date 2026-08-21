@@ -10,6 +10,11 @@ import {
   feedbackRo,
 } from "@/i18n/locales/feedback";
 import {
+  landmarkEn,
+  landmarkJa,
+  landmarkRo,
+} from "@/i18n/locales/landmark";
+import {
   progressionEn,
   progressionJa,
   progressionRo,
@@ -41,6 +46,7 @@ void i18n.use(initReactI18next).init({
       translation: {
         ...en,
         feedback: feedbackEn,
+        landmark: landmarkEn,
         progression: progressionEn,
         session: sessionEn,
       },
@@ -49,6 +55,7 @@ void i18n.use(initReactI18next).init({
       translation: {
         ...ja,
         feedback: feedbackJa,
+        landmark: landmarkJa,
         progression: progressionJa,
         session: sessionJa,
       },
@@ -57,6 +64,7 @@ void i18n.use(initReactI18next).init({
       translation: {
         ...ro,
         feedback: feedbackRo,
+        landmark: landmarkRo,
         progression: progressionRo,
         session: sessionRo,
       },

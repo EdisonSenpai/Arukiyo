@@ -31,6 +31,7 @@ export default function RootLayout() {
             <Stack.Screen name="language" />
             <Stack.Screen name="session-summary" />
             <Stack.Screen name="session-history" />
+            <Stack.Screen name="landmark-detail" />
           </Stack>
         </ExplorationSessionProvider>
       </LanguageProvider>

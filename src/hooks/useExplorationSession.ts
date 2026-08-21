@@ -47,6 +47,7 @@ import {
 
 export type ExplorationSessionState = {
   acceptedPointCount: number;
+  activeSessionId: string | null;
   activeSessionStartedAt: string | null;
   cellFeatures: ReturnType<typeof createCellFeatureCollection>;
   clearExploration: () => Promise<void>;
@@ -92,6 +93,8 @@ export function useExplorationSession(): ExplorationSessionState {
   const [isBusy, setIsBusy] = useState(false);
   const [isHydrating, setIsHydrating] = useState(true);
   const [isSessionActive, setIsSessionActive] = useState(false);
+  const [activeSessionId, setActiveSessionId] =
+    useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const [activeSessionStartedAt, setActiveSessionStartedAt] =
@@ -504,6 +507,7 @@ export function useExplorationSession(): ExplorationSessionState {
         );
 
         activeSessionIdRef.current = null;
+        setActiveSessionId(null);
         activeSessionStartedAtRef.current = null;
         setActiveSessionStartedAt(null);
 
@@ -545,6 +549,7 @@ export function useExplorationSession(): ExplorationSessionState {
       );
 
       activeSessionIdRef.current = sessionId;
+      setActiveSessionId(sessionId);
       activeSessionStartedAtRef.current = startedAt;
       lastAcceptedPointRef.current = null;
       routePointsRef.current = [];
@@ -709,6 +714,7 @@ export function useExplorationSession(): ExplorationSessionState {
 
   return {
     acceptedPointCount,
+    activeSessionId,
     activeSessionStartedAt,
     cellFeatures,
     clearExploration,
