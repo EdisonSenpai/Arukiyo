@@ -2,11 +2,29 @@ export const progressionEn = {
   level: "LEVEL {{level}}",
   xp: "XP",
   coins: "coins",
+  sakuraShards: "Sakura Shards",
   sessions: "sessions",
   areas: "areas",
   loading: "Loading progress…",
   homeIntro:
     "Every real journey now builds your explorer rank.",
+  wallet: {
+    eyebrow: "EXPLORER ECONOMY",
+    title: "Explorer wallet",
+    subtitle:
+      "Two exploration currencies with different rarity and purpose.",
+    coinsTitle: "Coins",
+    coinsCopy:
+      "Common currency earned from movement, new cells, completed journeys, and bonuses.",
+    shardsTitle: "Sakura Shards",
+    shardsCopy:
+      "Rare currency reserved for important discoveries and larger milestones.",
+    howToEarn: "HOW TO EARN SAKURA SHARDS",
+    earnNow:
+      "Available now: discover eligible landmarks. More important landmarks award more Sakura Shards.",
+    earnLater:
+      "Additional sources will include city mastery, larger quests, collections, achievements, and special exploration milestones.",
+  },
   ranks: {
     wanderer: "Wanderer",
     pathfinder: "Pathfinder",
@@ -52,7 +70,7 @@ export const progressionEn = {
   },
   shop: {
     walletConnected:
-      "Your wallet is now connected to exploration rewards. Purchases remain a visual preview in Stage 3B.",
+      "Balances are live and earned through exploration. Purchases and inventory are not active yet.",
   },
   errors: {
     award:
@@ -66,11 +84,29 @@ export const progressionRo = {
   level: "NIVEL {{level}}",
   xp: "XP",
   coins: "monede",
+  sakuraShards: "Fragmente Sakura",
   sessions: "sesiuni",
   areas: "zone",
   loading: "Se încarcă progresul…",
   homeIntro:
     "Fiecare călătorie reală îți dezvoltă acum rangul de explorator.",
+  wallet: {
+    eyebrow: "ECONOMIA EXPLORATORULUI",
+    title: "Portofel de explorator",
+    subtitle:
+      "Două monede de explorare, cu raritate și scop diferite.",
+    coinsTitle: "Monede",
+    coinsCopy:
+      "Monedă comună obținută din deplasare, celule noi, călătorii finalizate și bonusuri.",
+    shardsTitle: "Fragmente Sakura",
+    shardsCopy:
+      "Monedă rară rezervată descoperirilor importante și obiectivelor mai mari.",
+    howToEarn: "CUM OBȚII FRAGMENTE SAKURA",
+    earnNow:
+      "Disponibil acum: descoperă landmark-uri eligibile. Landmark-urile mai importante oferă mai multe Fragmente Sakura.",
+    earnLater:
+      "Alte surse vor include progresul orașelor, misiuni mai mari, colecții, realizări și praguri speciale de explorare.",
+  },
   ranks: {
     wanderer: "Rătăcitor",
     pathfinder: "Deschizător de drumuri",
@@ -116,7 +152,7 @@ export const progressionRo = {
   },
   shop: {
     walletConnected:
-      "Portofelul este conectat acum la recompensele din explorare. Cumpărăturile rămân o previzualizare în Stage 3B.",
+      "Soldurile sunt reale și se obțin prin explorare. Cumpărăturile și inventarul nu sunt încă active.",
   },
   errors: {
     award:
@@ -130,11 +166,29 @@ export const progressionJa = {
   level: "レベル {{level}}",
   xp: "XP",
   coins: "コイン",
+  sakuraShards: "サクラの欠片",
   sessions: "セッション",
   areas: "エリア",
   loading: "進行状況を読み込んでいます…",
   homeIntro:
     "現実の旅が、あなたの探索者ランクを成長させます。",
+  wallet: {
+    eyebrow: "探索者のエコノミー",
+    title: "探索者ウォレット",
+    subtitle:
+      "希少度と役割が異なる2種類の探索通貨です。",
+    coinsTitle: "コイン",
+    coinsCopy:
+      "移動、新しいセル、旅の完了、ボーナスで獲得できる通常通貨です。",
+    shardsTitle: "サクラの欠片",
+    shardsCopy:
+      "重要な発見や大きな探索目標で獲得する希少通貨です。",
+    howToEarn: "サクラの欠片の入手方法",
+    earnNow:
+      "現在は対象ランドマークの発見で獲得できます。重要度が高いほど多くの欠片を獲得できます。",
+    earnLater:
+      "今後は都市マスタリー、大きなクエスト、コレクション、実績、特別な探索マイルストーンからも獲得できます。",
+  },
   ranks: {
     wanderer: "旅人",
     pathfinder: "道しるべ",
@@ -180,7 +234,7 @@ export const progressionJa = {
   },
   shop: {
     walletConnected:
-      "ウォレットは探索報酬と連動しました。購入機能はStage 3Bではプレビューです。",
+      "残高は探索報酬と連動しています。購入とインベントリ機能はまだ有効ではありません。",
   },
   errors: {
     award:

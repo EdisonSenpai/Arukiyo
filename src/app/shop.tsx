@@ -1,7 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import {
-  ActivityIndicator,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -11,6 +10,10 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 
+import {
+  ExplorerWalletCard,
+  WalletPills,
+} from "@/components/ExplorerWallet";
 import { COLORS, RADII, SPACING } from "@/constants/theme";
 import { usePlayerProgress } from "@/hooks/usePlayerProgress";
 
@@ -71,23 +74,11 @@ export default function ShopScreen() {
               {t("shop.title")}
             </Text>
           </View>
-          <View style={styles.wallet}>
-            <Ionicons
-              color={COLORS.gold}
-              name="leaf"
-              size={17}
-            />
-            {isLoading ? (
-              <ActivityIndicator
-                color={COLORS.gold}
-                size="small"
-              />
-            ) : (
-              <Text style={styles.walletText}>
-                {progress.coins}
-              </Text>
-            )}
-          </View>
+          <WalletPills
+            coins={progress.coins}
+            isLoading={isLoading}
+            sakuraShards={progress.sakuraShards}
+          />
         </View>
 
         <View style={styles.banner}>
@@ -109,26 +100,12 @@ export default function ShopScreen() {
           />
         </View>
 
-        <View style={styles.walletNotice}>
-          <View style={styles.walletNoticeIcon}>
-            <Ionicons
-              color={COLORS.gold}
-              name="leaf"
-              size={22}
-            />
-          </View>
-          <View style={styles.walletNoticeCopy}>
-            <Text style={styles.walletNoticeTitle}>
-              {progress.coins}{" "}
-              {t("progression.coins")}
-            </Text>
-            <Text style={styles.walletNoticeText}>
-              {t(
-                "progression.shop.walletConnected",
-              )}
-            </Text>
-          </View>
-        </View>
+        <ExplorerWalletCard
+          coins={progress.coins}
+          isLoading={isLoading}
+          sakuraShards={progress.sakuraShards}
+          showGuide
+        />
 
         <View style={styles.filters}>
           <View style={styles.filterActive}>

@@ -2,7 +2,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import {
-  ActivityIndicator,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -12,6 +11,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 
+import { WalletPills } from "@/components/ExplorerWallet";
 import { SectionTitle } from "@/components/SectionTitle";
 import { COLORS, RADII, SPACING } from "@/constants/theme";
 import { usePlayerProgress } from "@/hooks/usePlayerProgress";
@@ -49,23 +49,11 @@ export default function HomeScreen() {
             </Text>
           </View>
 
-          <View style={styles.coinPill}>
-            <Ionicons
-              color={COLORS.gold}
-              name="leaf"
-              size={17}
-            />
-            {isLoading ? (
-              <ActivityIndicator
-                color={COLORS.gold}
-                size="small"
-              />
-            ) : (
-              <Text style={styles.coinText}>
-                {progress.coins}
-              </Text>
-            )}
-          </View>
+          <WalletPills
+            coins={progress.coins}
+            isLoading={isLoading}
+            sakuraShards={progress.sakuraShards}
+          />
         </View>
 
         {error ? (
