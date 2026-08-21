@@ -127,6 +127,7 @@ export async function migrateExplorationDatabase(
         CHECK (id = 1),
       total_xp INTEGER NOT NULL DEFAULT 0,
       coins INTEGER NOT NULL DEFAULT 0,
+      sakura_shards INTEGER NOT NULL DEFAULT 0,
       total_distance_meters REAL NOT NULL DEFAULT 0,
       rewarded_sessions INTEGER NOT NULL DEFAULT 0,
       updated_at TEXT NOT NULL
@@ -206,6 +207,13 @@ export async function migrateExplorationDatabase(
       )
     WHERE status = 'active';
   `);
+
+  await ensureExplorationColumn(
+    database,
+    "player_progress",
+    "sakura_shards",
+    "INTEGER NOT NULL DEFAULT 0",
+  );
 }
 
 export async function getAppSetting(
@@ -504,4 +512,23 @@ function mapSessionRow(
     startedAt: row.started_at,
     status: row.status,
   };
+}
+
+async function ensureExplorationColumn(
+  database: SQLiteDatabase,
+  table: string,
+  column: string,
+  definition: string,
+): Promise<void> {
+  const rows = await database.getAllAsync<{ name: string }>(
+    `PRAGMA table_info(${table})`,
+  );
+
+  if (rows.some((row) => row.name === column)) {
+    return;
+  }
+
+  await database.execAsync(
+    `ALTER TABLE ${table} ADD COLUMN ${column} ${definition};`,
+  );
 }

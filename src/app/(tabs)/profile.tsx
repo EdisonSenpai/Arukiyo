@@ -11,6 +11,10 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 
+import {
+  ExplorerWalletCard,
+  WalletPills,
+} from "@/components/ExplorerWallet";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { COLORS, RADII, SPACING } from "@/constants/theme";
 import { usePlayerProgress } from "@/hooks/usePlayerProgress";
@@ -94,16 +98,11 @@ export default function ProfileScreen() {
                 {progress.totalXp} XP
               </Text>
             </View>
-            <View style={styles.wallet}>
-              <Ionicons
-                color={COLORS.gold}
-                name="leaf"
-                size={16}
-              />
-              <Text style={styles.walletText}>
-                {progress.coins}
-              </Text>
-            </View>
+            <WalletPills
+              coins={progress.coins}
+              isLoading={isLoading}
+              sakuraShards={progress.sakuraShards}
+            />
           </View>
 
           <View style={styles.progressTrack}>
@@ -130,6 +129,12 @@ export default function ProfileScreen() {
             </Text>
           </View>
         </View>
+
+        <ExplorerWalletCard
+          coins={progress.coins}
+          isLoading={isLoading}
+          sakuraShards={progress.sakuraShards}
+        />
 
         <Text style={styles.sectionTitle}>
           {t("progression.profile.journeyStats")}
@@ -193,16 +198,11 @@ export default function ProfileScreen() {
               {t("profile.shopDescription")}
             </Text>
           </View>
-          <View style={styles.shopWallet}>
-            <Ionicons
-              color={COLORS.gold}
-              name="leaf"
-              size={14}
-            />
-            <Text style={styles.shopWalletText}>
-              {progress.coins}
-            </Text>
-          </View>
+          <WalletPills
+            coins={progress.coins}
+            isLoading={isLoading}
+            sakuraShards={progress.sakuraShards}
+          />
           <Ionicons
             color={COLORS.muted}
             name="chevron-forward"

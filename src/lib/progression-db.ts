@@ -15,6 +15,7 @@ import {
 
 type PlayerProgressRow = {
   coins: number;
+  sakura_shards: number;
   rewarded_sessions: number;
   total_distance_meters: number;
   total_xp: number;
@@ -64,6 +65,7 @@ type UnrewardedSessionRow = {
 
 export type PlayerProgressDashboard = LevelProgress & {
   coins: number;
+  sakuraShards: number;
   discoveredCells: number;
   firstSessionBonusClaimed: boolean;
   oneKilometerBonusClaimed: boolean;
@@ -90,6 +92,7 @@ export type SessionRewardRecord =
 
 export const EMPTY_PROGRESS_DASHBOARD: PlayerProgressDashboard = {
   coins: 0,
+  sakuraShards: 0,
   currentLevelXp: 0,
   discoveredCells: 0,
   firstSessionBonusClaimed: false,
@@ -420,6 +423,7 @@ export async function getPlayerProgressDashboard(
   return {
     ...levelProgress,
     coins: progressRow.coins,
+    sakuraShards: progressRow.sakura_shards,
     discoveredCells: discoveredRow?.count ?? 0,
     firstSessionBonusClaimed:
       dailyRow?.first_session_bonus_claimed === 1,
@@ -446,6 +450,7 @@ async function getPlayerProgressRow(
         SELECT
           total_xp,
           coins,
+          sakura_shards,
           total_distance_meters,
           rewarded_sessions
         FROM player_progress
@@ -457,6 +462,7 @@ async function getPlayerProgressRow(
   return (
     row ?? {
       coins: 0,
+      sakura_shards: 0,
       rewarded_sessions: 0,
       total_distance_meters: 0,
       total_xp: 0,

@@ -10,7 +10,7 @@
 
 A Japanese-inspired mobile exploration game that turns real-world movement into progress, discovery, collections, and adventure.
 
-[![Development Stage](https://img.shields.io/badge/stage-4C%20completed-D85B4B?style=for-the-badge)](#development-progress)
+[![Development Stage](https://img.shields.io/badge/stage-4D%20completed-D85B4B?style=for-the-badge)](#development-progress)
 [![Android Preview](https://img.shields.io/badge/Android-standalone%20preview-3DDC84?style=for-the-badge&logo=android&logoColor=white)](#android-build-variants)
 [![Expo](https://img.shields.io/badge/Expo-SDK%2057-000020?style=for-the-badge&logo=expo&logoColor=white)](#technology)
 [![React Native](https://img.shields.io/badge/React%20Native-0.86-61DAFB?style=for-the-badge&logo=react&logoColor=black)](#technology)
@@ -111,8 +111,8 @@ Arukiyo is planned as a real-world exploration RPG with:
 | Stage 4C1 | ✅ Complete | Nearby landmark acquisition, importance classification, normalized local cache, unlock eligibility |
 | Stage 4C2 | ✅ Complete | Landmark map targets, proximity unlocks, discovery feedback, rewards, Sakura Shards foundation |
 | Stage 4C3 | ✅ Complete | Journal landmark collection, detail pages, quick facts, images, Wikipedia/Wikidata/source enrichment |
-| Stage 4D | ⏭ Next | Sakura Shards UI, dual wallet, economy explanation, reward-surface integration |
-| Stage 4E | Planned | World Atlas, city mastery, region/country/continent/world progress, city reveal |
+| Stage 4D | ✅ Complete | Sakura Shards UI, dual wallet, economy explanation, reward-surface integration |
+| Stage 4E | ⏭ Next | World Atlas, city mastery, region/country/continent/world progress, city reveal |
 | Stage 4F | Planned | Dynamic Daily / Weekly / Monthly Quest Engine, persistence, timers, contextual mission generation |
 | Stage 4G | Planned | Real Shop purchases, inventory, ownership, equip state, functional cosmetics |
 | Stage 4H | Planned | Profile badges, Journal Stamps/Collections, richer explorer statistics and mastery displays |
@@ -297,7 +297,7 @@ Stage 4C introduces the **storage and reward foundation** for Sakura Shards as a
 
 The first implemented earning source is proximity-based landmark discovery, with rewards scaled by landmark importance tier.
 
-Stage 4D will make Sakura Shards visible throughout the application through a dual-wallet UI and an explanation of how the currency is earned and used.
+Stage 4D makes Sakura Shards visible throughout the application through a dual-wallet UI and a clear explanation of how the currency is earned and used.
 
 Planned additional sources include:
 
@@ -585,7 +585,7 @@ The current branch has passed the development validation commands used throughou
 
 - `npm run typecheck`;
 - `npm run lint`;
-- `npx expo-doctor` → 20/20 checks passed;
+- `npx expo-doctor` → 21/21 checks passed;
 - `git diff --check`.
 
 A non-blocking MapLibre native warning (`Invalid geometry in line layer`) can currently appear during map rendering even though the map remains functional and the project validation checks pass. It remains under observation for Stage 4J geometry/rendering cleanup if needed.
